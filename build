@@ -1,0 +1,6 @@
+#!/bin/sh
+
+DEBUG='-g' 
+
+gcc $DEBUG -o bmp *.c
+

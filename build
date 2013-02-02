@@ -2,5 +2,5 @@
 
 DEBUG='-g' 
 
-gcc $DEBUG -o bmp *.c
+gcc $DEBUG -Wall -o bmp *.c
 

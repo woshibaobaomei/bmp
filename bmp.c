@@ -5,9 +5,11 @@
  *-----------------------------------------------------------------------------
  */
 
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
@@ -27,6 +29,8 @@
 #define BMP_CLIENT_MAX (1 << 10)
 #define BMP_RDBUF_MAX  (1 << 16) 
 
+#define BMP_RDBUF_SPACE(c) ((c)->rdbuf + BMP_RDBUF_MAX - (c)->rdptr)
+
 
 /*
  * Forward declarations for all major types
@@ -42,8 +46,8 @@ typedef struct bmp_message_ bmp_message;
  */
 struct bmp_client_ {
     int   fd;
-    char  rdbuf[BMP_RDBUF_MAX];
     char *rdptr;
+    char  rdbuf[BMP_RDBUF_MAX];
         
     bmp_message *head;
     bmp_message *tail;
@@ -79,53 +83,140 @@ struct bmp_message_ {
 
 
 void
-bmp_log() 
+bmp_log(const char *format, ...) 
 {
+    char log[1024];
+    char ts[64];
+    char *t = ts;
+    char *p = log;
+    struct timeval tv; 
+    struct tm *tm;
+
+    gettimeofday(&tv, NULL);
+    tm = localtime(&tv.tv_sec);
+    t += strftime(t, sizeof(ts), "%H:%M:%S.", tm);
+    snprintf(t, sizeof(ts), "%03ld", tv.tv_usec/1000);
+
+    va_list args;
+    va_start(args, format);
+
+    p += snprintf(p, sizeof(log), "BMP# [%s] ", ts);
+    p += vsnprintf(p, sizeof(log)-(p-log), format, args);
+
+    va_end(args);
+
+    printf("\n%s", log);
+    fflush(stdout);
+}
+
+
+
+static void
+bmp_cleanup_client(bmp_client *client)
+{
+
+
+}
+
+
+void
+bmp_close_client(bmp_server *server, bmp_client *client, int reason)
+{
+    assert(client != NULL);
+    assert(client->fd != 0);
+
+    server->clients[client->fd] = NULL;
+
+
+    bmp_log("BMP-ADJCHANGE: %d DN (reason: %d)", client->fd, reason);
+
+
+    close(client->fd); // this will also remove the fd from the epoll queue
+
+    bmp_cleanup_client(client);
 }
 
 
 
 char *
-bmp_protocol_read()
+bmp_protocol_read(bmp_server *server,bmp_client *client,char *data,char *end)
 {
+ 
 
+
+    return data;   
 }
 
 
-void
-bmp_close_client(bmp_server *server, bmp_client *client);
-
-
-#define BMP_CLIENT_RDBUF_SPACE(c) ((c)->rdbuf + BMP_RDBUF_MAX - (c)->rdptr)
-
-void
+int
 bmp_net_read(bmp_server *server, bmp_client *client)
 {
-    int rc = 0;
+    int rc = 1, space;
+    char *pread;
 
-    while (1) {
+    assert(client->fd != 0);
 
-        rc = read(client->fd, client->rdptr, BMP_CLIENT_RDBUF_SPACE(client));
+    while (rc > 0) {
+
+    while ((space = BMP_RDBUF_SPACE(client)) > 0) {
+
+        rc = read(client->fd, client->rdptr, space);
 
         if (rc > 0) {
 
+            client->rdptr += rc;
          
         } else if (rc == 0) {
 
-            fprintf(stdout, "read(%d) remote close\n", client->fd);
-            bmp_close_client(server, client);
-            break;
-
+            goto bmp_client_close;
+ 
         } else {
 
-            if (errno != EAGAIN) {
-                fprintf(stdout, "read(%d) failed\n", client->fd);
-                bmp_close_client(server, client);
-            }
-
+            if (errno != EAGAIN) goto bmp_read_error;
+            
             break;
         }
-    }     
+    }    
+
+    if (client->rdptr - client->rdbuf > 0) {
+        /*
+         * Whatever we read, feed it to the protocol machinery. This will
+         * consume the read buffer upto the last full PDU, leaving behind a 
+         * partial PDU if any bytes should remain
+         */
+        pread = bmp_protocol_read(server,client,client->rdbuf,client->rdptr);
+
+        /*
+         * If the protocol parsing detects an error, it will return NULL
+         */
+        if (pread == NULL) return rc;
+ 
+        /*
+         * Protocol should *not* read past the end of the read buffer
+         */
+        assert(pread <= client->rdptr);
+
+        /*
+         * Copy the fragment PDU to the head of the read buffer. The protocol
+         * read always happens from the head of the read buffer
+         */
+        memcpy(client->rdbuf, pread, client->rdptr - pread);
+        client->rdptr = client->rdbuf + (client->rdptr - pread);
+    }
+    
+    }
+
+    return rc;
+
+bmp_client_close:
+
+    bmp_close_client(server, client, 0);
+    return rc;  
+
+bmp_read_error:
+
+    bmp_close_client(server, client, 1);
+    return rc;         
 }
 
 
@@ -140,7 +231,9 @@ bmp_process_client(bmp_server *server, int fd, int events)
     assert(client != NULL);
     assert(client->fd == fd);
 
-    bmp_net_read(server, client);
+    rc = bmp_net_read(server, client);
+
+    return rc;
 }
 
 
@@ -181,28 +274,6 @@ bmp_so_reuseaddr(int fd)
 }
 
 
-static void
-bmp_cleanup_client(bmp_client *client)
-{
-
-
-}
-
-
-void
-bmp_close_client(bmp_server *server, bmp_client *client)
-{
-    assert(client != NULL);
-    assert(client->fd != 0);
-
-    server->clients[client->fd] = NULL;
-
-    close(client->fd); // this will also remove the fd from the epoll queue
-
-    bmp_cleanup_client(client);
-}
-
-
 /* 
  * Create a bmp_client entry in the server->clients list
  * Queue the accepted fd to the same epoll queue as the server socket
@@ -230,9 +301,17 @@ bmp_create_client(bmp_server *server, int fd)
      * the client slot
      */
     client = calloc(1, sizeof(bmp_client));
+
+    if (client == NULL) {
+        return -1;
+    } 
+
     client->fd = fd;
     assert(server->clients[fd] == NULL);
     server->clients[fd] = client;
+    client->rdptr = client->rdbuf;
+    
+    bmp_log("BMP-ADJCHANGE: %d UP", fd);
    
     /*
      * Queue the client fd into the server's epoll queue
@@ -244,6 +323,8 @@ bmp_create_client(bmp_server *server, int fd)
     if (rc < 0) {
         fprintf(stdout, "epoll_ctl(+fd) failed: %s\n", strerror(errno));
     }
+
+    return rc;
 }
 
 
@@ -273,10 +354,9 @@ bmp_accept_clients(bmp_server *server, int events)
 
         rc = bmp_create_client(server, fd);
     }
+  
+    return rc;
 }
-
-
-// == BMP interactive server command processing ===============================
 
 
 void
@@ -366,8 +446,7 @@ bmp_console_init(bmp_server *server)
         return rc;
     }
 
-    // initial prompt
-    bmp_console_prompt();
+    return rc;
 }
 
 
@@ -452,6 +531,8 @@ int
 bmp_server_run(bmp_server *server)
 {
     int i, e, n, fd;
+
+    bmp_log("Listening on port: %d", server->port);
  
     while (1) {
         /*

@@ -33,9 +33,9 @@ struct bmp_message_ {
 };
 
 
-int bmp_create_client(bmp_server *server, int fd);
-int bmp_process_client(bmp_server *server, int fd, int events);
-int bmp_close_client(bmp_server *server, bmp_client *client, int reason);
+int bmp_client_create(bmp_server *server, int fd);
+int bmp_client_process(bmp_server *server, int fd, int events);
+int bmp_client_close(bmp_server *server, bmp_client *client, int reason);
 
 #endif
 

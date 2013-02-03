@@ -31,6 +31,7 @@ bmp_log(const char *format, ...)
     char *p = log;
     struct timeval tv; 
     struct tm *tm;
+    static int init = 1;
 
     gettimeofday(&tv, NULL);
     tm = localtime(&tv.tv_sec);
@@ -45,13 +46,15 @@ bmp_log(const char *format, ...)
 
     va_end(args);
 
-    printf("\n%s", log);
+    printf("%s%s%s", init ? "" : "\n", log, init ? "\n" : "");
     fflush(stdout);
+   
+    if (init) bmp_command_prompt();
+
+    init = 0;
+
     return 0;
 }
-
-
-
 
 
 int 
@@ -91,9 +94,8 @@ bmp_so_reuseaddr(int fd)
 }
 
 
-
 /*
- * accept() connections from a server socket fd
+ * accept() connections from a server socket fd and create new client structs
  */  
 static int 
 bmp_accept_clients(bmp_server *server, int events)
@@ -116,7 +118,7 @@ bmp_accept_clients(bmp_server *server, int events)
             break;
         }
 
-        rc = bmp_create_client(server, fd);
+        rc = bmp_client_create(server, fd);
     }
   
     return rc;
@@ -232,14 +234,14 @@ bmp_server_run(bmp_server *server)
 
             } else if (fd == STDIN_FILENO) {
 
-                bmp_process_console(server, e);
+                bmp_command_process(server, e);
 
             } else {
                 /*
                  * We are processing client connections in the same thread as 
                  * the main server thread
                  */
-                bmp_process_client(server, fd, e);
+                bmp_client_process(server, fd, e);
             } 
         }
     }
@@ -258,7 +260,7 @@ int main(int argc, char *argv[])
     rc = bmp_server_init(&server, 1111);
 
     if (rc == 0) {
-        rc = bmp_console_init(&server);
+        rc = bmp_command_init(&server);
     }
 
     if (rc == 0) {

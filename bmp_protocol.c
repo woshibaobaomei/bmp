@@ -8,8 +8,10 @@ bmp_protocol_read(bmp_server *server,bmp_client *client,char *data,char *end)
 {
  
 
+    bmp_log("read %d bytes", end-data);
 
-    return data;   
+
+    return end;   
 }
 
 

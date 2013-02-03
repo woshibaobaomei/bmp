@@ -1,4 +1,3 @@
-
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
@@ -11,15 +10,14 @@
 
 
 static void
-bmp_cleanup_client(bmp_client *client)
+bmp_client_cleanup(bmp_client *client)
 {
-
-
+    free(client);
 }
 
 
 int
-bmp_close_client(bmp_server *server, bmp_client *client, int reason)
+bmp_client_close(bmp_server *server, bmp_client *client, int reason)
 {
     assert(client != NULL);
     assert(client->fd != 0);
@@ -32,14 +30,14 @@ bmp_close_client(bmp_server *server, bmp_client *client, int reason)
 
     close(client->fd); // this will also remove the fd from the epoll queue
 
-    bmp_cleanup_client(client);
+    bmp_client_cleanup(client);
 
     return 0;
 }
 
 
 static int
-bmp_net_read(bmp_server *server, bmp_client *client)
+bmp_client_read(bmp_server *server, bmp_client *client)
 {
     int rc = 1, space;
     char *pread;
@@ -58,11 +56,11 @@ bmp_net_read(bmp_server *server, bmp_client *client)
          
         } else if (rc == 0) {
 
-            goto bmp_client_close;
+            goto remote_close;
  
         } else {
 
-            if (errno != EAGAIN) goto bmp_read_error;
+            if (errno != EAGAIN) goto read_error;
             
             break;
         }
@@ -98,20 +96,20 @@ bmp_net_read(bmp_server *server, bmp_client *client)
 
     return rc;
 
-bmp_client_close:
+remote_close:
 
-    bmp_close_client(server, client, 0);
+    bmp_client_close(server, client, 0);
     return rc;  
 
-bmp_read_error:
+read_error:
 
-    bmp_close_client(server, client, 1);
+    bmp_client_close(server, client, 1);
     return rc;         
 }
 
 
 int
-bmp_process_client(bmp_server *server, int fd, int events)
+bmp_client_process(bmp_server *server, int fd, int events)
 {
     int rc = 0;
     bmp_client *client;
@@ -121,7 +119,7 @@ bmp_process_client(bmp_server *server, int fd, int events)
     assert(client != NULL);
     assert(client->fd == fd);
 
-    rc = bmp_net_read(server, client);
+    rc = bmp_client_read(server, client);
 
     return rc;
 }
@@ -132,7 +130,7 @@ bmp_process_client(bmp_server *server, int fd, int events)
  * Queue the accepted fd to the same epoll queue as the server socket
  */
 int
-bmp_create_client(bmp_server *server, int fd)
+bmp_client_create(bmp_server *server, int fd)
 {
     int rc;
     struct epoll_event ev;
@@ -175,7 +173,7 @@ bmp_create_client(bmp_server *server, int fd)
  
     if (rc < 0) {
         bmp_log("epoll_ctl(EPOLL_CTL_ADD, %d) failed: %s", fd, strerror(errno));
-        bmp_close_client(server, client, 3);
+        bmp_client_close(server, client, 3);
     }
 
     return rc;

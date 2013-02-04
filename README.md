@@ -13,16 +13,16 @@ connect to and exchange routing and topology information with.
 Build/Installation/Run
 ----------------------
 
-Note: this software currently will only build and run on Linux systems.
+Note: this software currently will only build and run on Linux (2.6+)
 
-To build the software simply run the 'build' script:
+To compile the software simply run the 'compile' script:
 
-    $ source build
+    $ source compile
 
 This creates an executable named 'bmp' which takes a port number as an option:
 
     $ ./bmp 1200
-    BMP# [12:11:12.123] Listening on port 1200
+    BMP# [05:11:33.471] Listening on port 1200
     BMP#
   
 Now the BMP sever is running on port 1200 on your machine. BGP routers can now 

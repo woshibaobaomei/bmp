@@ -33,13 +33,19 @@ Usage
 ----- 
 
 show bmp summary
+
 show bmp clients
+
 show bmp client X
+
 show bmp client X messages
+
 show bmp client X ....
 
 clear bmp client X
+
 debug bmp client X
+
 clush bmp client X
 
 

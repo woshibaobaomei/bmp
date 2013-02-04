@@ -23,7 +23,7 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     assert(client->fd != 0);
 
     server->clients[client->fd] = NULL;
-
+    server->nclient--;
 
     bmp_log("BMP-ADJCHANGE: %d DN (reason: %d)", client->fd, reason);
 
@@ -161,7 +161,8 @@ bmp_client_create(bmp_server *server, int fd)
     assert(server->clients[fd] == NULL);
     server->clients[fd] = client;
     client->rdptr = client->rdbuf;
-    
+    server->nclient++;   
+ 
     bmp_log("BMP-ADJCHANGE: %d UP", fd);
    
     /*

@@ -22,20 +22,25 @@ do {                             \
 } while (0);
 
 
-
 static int
 bmp_show_summary(bmp_server *server, char *cmd)
 {
- 
+    printf("\n");
+    printf("Listening on port: %d\n", server->port);
+    printf("Active BGP clients: %d\n", server->nclient);
+    printf("Active BGP peers: %d\n", 0);
+    printf("Memory usage: %d\n", 0);       
+
+    printf("\n");
+
     return 0;
 }
-
 
 
 static int
 bmp_show_clients(bmp_server *server, char *cmd)
 {
- 
+    
     return 0;
 }
 
@@ -150,46 +155,20 @@ bmp_command_process(bmp_server *server, int events)
     rc = read(STDIN_FILENO, buffer, sizeof(buffer));
     
     if (rc > sizeof(buffer) - 1) {
-        // input command is too long
+        printf("%% Command is too long\n");
+        rc = -1;
+        goto done;
     }
  
     buffer[rc] = 0;
 
     bmp_command(server, cmd);
 
-    bmp_command_prompt();
+done:
 
+    bmp_command_prompt();
     return rc;
 }
-
-#if 0
-void
-bmp_process_console2(bmp_server *server, int events)
-{
-    int rc;
-    char c[16], ch;
-    rc = read(0, c, 16);
-    ch = c[0];
-    c[rc] = 0;
-  
-    if (ch == 13) {
-
-        printf("\r\n");
-        bmp_console_prompt();
-
-    } else if (ch == 127) {
-
-        printf("\b \b");
-        fflush(stdout);
-
-    } else {
-
-        printf("%d.%d ", ch, rc);
-        fflush(stdout);
-
-    }
-}
-#endif
 
 
 int
@@ -197,14 +176,7 @@ bmp_command_init(bmp_server *server)
 {
     int rc = 0;
     struct epoll_event ev;
-
-#if 0
-    struct termios tio;
-    tio.c_lflag &=(~ICANON & ~ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &tio);
-#endif
-
-
+ 
     ev.data.fd = STDIN_FILENO;
     ev.events = EPOLLIN | EPOLLET;
    

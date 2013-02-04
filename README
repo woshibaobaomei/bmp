@@ -17,13 +17,15 @@ Note: this software currently will only build and run on Linux systems.
 
 To build the software simply run the 'build' script:
 
-'''source build
+    $ source build
 
 This creates an executable named 'bmp' which takes a port number as an option:
 
-'''./bmp 1202
+    $ ./bmp 1200
+    BMP# [12:11:12.123] Listening on port 1200
+    BMP#
   
-Now the BMP sever is running on port 1202 on your machine. BGP routers can now 
+Now the BMP sever is running on port 1200 on your machine. BGP routers can now 
 connect to the machine on this port and start sending BMP messages.
 
 

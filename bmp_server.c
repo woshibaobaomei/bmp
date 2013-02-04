@@ -73,7 +73,7 @@ bmp_server_init(bmp_server *server, int port)
         exit(1);
     }
 
-    rc = bmp_so_reuseaddr(server->fd);
+    rc = socket_reuseaddr(server->fd);
 
     if (rc < 0) {
         return rc;
@@ -93,7 +93,7 @@ bmp_server_init(bmp_server *server, int port)
         return rc;
     }
     
-    rc = bmp_so_nonblock(server->fd);
+    rc = socket_nonblock(server->fd);
 
     if (rc < 0) {
         return rc;

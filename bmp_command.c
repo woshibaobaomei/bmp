@@ -10,20 +10,6 @@
 #include "bmp_server.h"
 
 
-#define BMP_NEXT_TOKEN(cmd, tok) \
-do {                             \
-    char *tmp = cmd;             \
-    tok = cmd;                   \
-    if (!*tok) {tok = 0; break;} \
-    while (isspace(*tok))tok++;  \
-    if (!*tok) {tok = 0; break;} \
-    tmp = tok;                   \
-    while (!isspace(*tmp))tmp++; \
-    *tmp = 0;                    \
-    cmd = tmp+1;                 \
-} while (0);
-
-
 static int
 bmp_show_summary(bmp_server *server, char *cmd)
 {
@@ -55,7 +41,7 @@ bmp_show_command(bmp_server *server, char *cmd)
     char *token = NULL;
     int rc = 0;
 
-    BMP_NEXT_TOKEN(cmd, token);
+    NEXT_TOKEN(cmd, token);
 
     if (!token) {
         printf("%% Expected a keyword after 'show'\n");
@@ -64,7 +50,7 @@ bmp_show_command(bmp_server *server, char *cmd)
 
     if (strcmp(token, "bmp") == 0) {
 
-        BMP_NEXT_TOKEN(cmd, token);
+        NEXT_TOKEN(cmd, token);
 
         if (!token) {
             printf("%% Expected a keyword after 'show bmp'\n");
@@ -119,7 +105,7 @@ bmp_command(bmp_server *server, char *cmd)
     char *token;
     int rc = 0;
 
-    BMP_NEXT_TOKEN(cmd, token);
+    NEXT_TOKEN(cmd, token);
 
     if (!token) {
         return rc;

@@ -27,9 +27,11 @@ bmp_show_summary(bmp_server *server, char *cmd)
 {
     printf("\n");
     printf("Listening on port: %d\n", server->port);
-    printf("Active BGP clients: %d\n", server->nclient);
+    printf("Active BGP clients: %d\n", server->clients);
     printf("Active BGP peers: %d\n", 0);
-    printf("Memory usage: %d\n", 0);       
+    printf("BMP messages rcvd: %d\n", 0);
+    printf("Total data rcvd: %llu\n", server->bytes);
+    printf("Total memory usage: %s\n", "1.2MB");       
 
     printf("\n");
 

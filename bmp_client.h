@@ -1,6 +1,7 @@
 #ifndef __BMP_CLIENT_H__
 #define __BMP_CLIENT_H__
 
+#include <stdint.h>
 #include <sys/time.h>
  
 
@@ -20,7 +21,9 @@ struct bmp_client_ {
     int   fd;
     char *rdptr;
     char  rdbuf[BMP_RDBUF_MAX];
-        
+    
+    uint64_t     bytes;
+    uint64_t     msgs;    
     bmp_message *head;
     bmp_message *tail;
 };

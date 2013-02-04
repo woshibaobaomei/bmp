@@ -22,8 +22,8 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     assert(client != NULL);
     assert(client->fd != 0);
 
-    server->clients[client->fd] = NULL;
-    server->nclient--;
+    server->client[client->fd] = NULL;
+    server->clients--;
 
     bmp_log("BMP-ADJCHANGE: %d DN (reason: %d)", client->fd, reason);
 
@@ -52,6 +52,8 @@ bmp_client_read(bmp_server *server, bmp_client *client)
 
         if (rc > 0) {
             
+            server->bytes += rc; 
+            client->bytes += rc;           
             client->rdptr += rc;
          
         } else if (rc == 0) {
@@ -117,7 +119,7 @@ bmp_client_process(bmp_server *server, int fd, int events)
     int rc = 0;
     bmp_client *client;
 
-    client = server->clients[fd];
+    client = server->client[fd];
 
     assert(client != NULL);
     assert(client->fd == fd);
@@ -129,7 +131,7 @@ bmp_client_process(bmp_server *server, int fd, int events)
 
 
 /* 
- * Create a bmp_client entry in the server->clients list
+ * Create a bmp_client entry in the server->client list
  * Queue the accepted fd to the same epoll queue as the server socket
  */
 int
@@ -151,7 +153,7 @@ bmp_client_create(bmp_server *server, int fd)
     }
 
     /*
-     * Use the fd as an index into the server->clients array and initialize
+     * Use the fd as an index into the server->client array and initialize
      * the client slot
      */
     client = calloc(1, sizeof(bmp_client));
@@ -161,10 +163,10 @@ bmp_client_create(bmp_server *server, int fd)
     } 
 
     client->fd = fd;
-    assert(server->clients[fd] == NULL);
-    server->clients[fd] = client;
+    assert(server->client[fd] == NULL);
+    server->client[fd] = client;
     client->rdptr = client->rdbuf;
-    server->nclient++;   
+    server->clients++;   
  
     bmp_log("BMP-ADJCHANGE: %d UP", fd);
    

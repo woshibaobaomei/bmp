@@ -1,6 +1,7 @@
 #ifndef __BMP_SERVER_H__
 #define __BMP_SERVER_H__
 
+#include <stdint.h>
 #include <sys/epoll.h>
 #include "bmp_client.h"
 
@@ -19,8 +20,10 @@ struct bmp_server_ {
     int   flags;
     int   index;
  
-    int         nclient;
-    bmp_client *clients[BMP_CLIENT_MAX];
+    uint64_t    bytes;
+    uint64_t    msgs;
+    uint32_t    clients;
+    bmp_client *client[BMP_CLIENT_MAX];
 };
 
 

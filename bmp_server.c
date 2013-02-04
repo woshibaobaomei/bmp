@@ -196,8 +196,8 @@ bmp_server_init(bmp_server *server, int port)
         return -1;
     }
 
-    server->nclient = 0;
-    memset(server->clients, 0, BMP_CLIENT_MAX*sizeof(bmp_client *));
+    server->clients = 0;
+    memset(server->client, 0, BMP_CLIENT_MAX*sizeof(bmp_client *));
  
     return rc;
 }

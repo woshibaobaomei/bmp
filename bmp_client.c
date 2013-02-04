@@ -51,7 +51,7 @@ bmp_client_read(bmp_server *server, bmp_client *client)
         rc = read(client->fd, client->rdptr, space);
 
         if (rc > 0) {
-
+            
             client->rdptr += rc;
          
         } else if (rc == 0) {
@@ -73,7 +73,7 @@ bmp_client_read(bmp_server *server, bmp_client *client)
          * partial PDU if any bytes should remain
          */
         pread = bmp_protocol_read(server,client,client->rdbuf,client->rdptr);
-
+        
         /*
          * If the protocol parsing detects an error, it will return NULL
          */
@@ -83,12 +83,15 @@ bmp_client_read(bmp_server *server, bmp_client *client)
          * Protocol should *not* read past the end of the read buffer
          */
         assert(pread <= client->rdptr);
-
+        
         /*
          * Copy the fragment PDU to the head of the read buffer. The protocol
          * read always happens from the head of the read buffer
          */
-        memcpy(client->rdbuf, pread, client->rdptr - pread);
+        if (pread < client->rdptr) {
+            memcpy(client->rdbuf, pread, client->rdptr - pread);
+        }
+        
         client->rdptr = client->rdbuf + (client->rdptr - pread);
     }
     

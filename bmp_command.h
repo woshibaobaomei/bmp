@@ -4,7 +4,6 @@
 #include "bmp_server.h"
 
 
-int bmp_command_prompt();
 int bmp_command_init(bmp_server *server);
 int bmp_command_process(bmp_server *server, int events);
 

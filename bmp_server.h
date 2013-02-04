@@ -27,11 +27,6 @@ struct bmp_server_ {
 };
 
 
-int bmp_log(const char *fmt, ...);
-
-int bmp_so_nonblock(int fd);
-int bmp_so_reuseaddr(int fd);
-
 int bmp_server_init(bmp_server *server, int port);
 int bmp_server_run(bmp_server *server);
  

@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/epoll.h>
+
+#include "bmp_util.h"
 #include "bmp_command.h"
 #include "bmp_server.h"
 
@@ -140,15 +142,6 @@ bmp_command(bmp_server *server, char *cmd)
 
 
 int
-bmp_command_prompt()
-{
-    printf("BMP# ");
-    fflush(stdout);
-    return 0;
-}
-
-
-int
 bmp_command_process(bmp_server *server, int events)
 {
     char buffer[1024], *cmd = buffer;
@@ -168,7 +161,7 @@ bmp_command_process(bmp_server *server, int events)
 
 done:
 
-    bmp_command_prompt();
+    bmp_prompt();
     return rc;
 }
 

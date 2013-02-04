@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "bmp_util.h"
 #include "bmp_client.h"
 #include "bmp_server.h"
 #include "bmp_protocol.h"

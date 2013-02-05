@@ -9,7 +9,7 @@
 #define BMP_RDBUF_MAX      (1 << 16) 
 #define BMP_RDBUF_SPACE(c) ((c)->rdbuf+BMP_RDBUF_MAX-(c)->rdptr)
  
-typedef struct bmp_server_  bmp_server;
+struct bmp_server_;
 typedef struct bmp_message_ bmp_message;
 typedef struct bmp_client_  bmp_client;
 
@@ -51,9 +51,9 @@ struct bmp_message_ {
                                     "unknown")
 
 
-int bmp_client_create(bmp_server *server, int fd);
-int bmp_client_process(bmp_server *server, int fd, int events);
-int bmp_client_close(bmp_server *server, bmp_client *client, int reason);
+int bmp_client_create(struct bmp_server_ *server, int fd);
+int bmp_client_process(struct bmp_server_ *server, int fd, int events);
+int bmp_client_close(struct bmp_server_ *server, bmp_client *client, int reason);
 
 #endif
 

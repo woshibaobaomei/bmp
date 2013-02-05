@@ -14,7 +14,7 @@ static int timerfd[BMP_TIMERFD_MAX];
 static int timerfds = 0;
 
 
-void
+static void
 bmp_alarm(int signo)
 {
     int index, rc;
@@ -31,7 +31,7 @@ bmp_alarm(int signo)
 }
 
 
-void
+static void
 bmp_alarm_init()
 {
     signal(SIGALRM, bmp_alarm);

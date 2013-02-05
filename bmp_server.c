@@ -52,7 +52,7 @@ bmp_accept_clients(bmp_server *server, int events)
 }
 
 
-int 
+static int 
 bmp_timer_process(bmp_server *server, int timer)
 {
     int rc;
@@ -110,7 +110,7 @@ bmp_server_init(bmp_server *server, int port)
         return rc;
     }
  
-    server->eq = epoll_create1(0);
+    server->eq = epoll_create(BMP_CLIENT_MAX);
 
     if (server->eq < 0) {
         bmp_log("epoll_create1() failed: %s", strerror(errno));
@@ -175,23 +175,20 @@ bmp_server_run(bmp_server *server, int timer)
                 continue;
             } 
  
-            if (fd == server->fd) {
+            if (fd == server->fd) { // server's listen socket - accept clients
 
                 bmp_accept_clients(server, e);
 
-            } else if (fd == STDIN_FILENO) {
+            } else if (fd == STDIN_FILENO) { // input pty - process commands
 
                 bmp_command_process(server, e);
 
-            } else if (fd == timer) {
+            } else if (fd == timer) { // periodic timer
 
                 bmp_timer_process(server, timer);
 
-            } else {
-                /*
-                 * We are processing client connections in the same thread as 
-                 * the main server thread
-                 */
+            } else { // handle client event
+ 
                 bmp_client_process(server, fd, e);
             }
         }

@@ -1,5 +1,5 @@
 Interactive BGP Monitoring Protocol (BMP) Server
-------------------------------------------------
+================================================
 
 BGP speaking routers use the BMP protocol to inform a monitoring end-station 
 about various events happening at the router. More information regarding BMP:
@@ -11,7 +11,7 @@ connect to and exchange routing and topology information with.
 
 
 Build/Installation/Run
-----------------------
+======================
 
 Note: this software currently will only build and run on Linux (2.6+)
 
@@ -30,7 +30,7 @@ connect to the machine on this port and start sending BMP messages.
 
 
 Usage
------ 
+=====
 
     BMP# show bmp summary
 

@@ -1,6 +1,7 @@
 #ifndef __BMP_UTIL_H__
 #define __BMP_UTIL_H__
 
+#include <stdint.h>
 
 #define NEXT_TOKEN(cmd, tok)     \
 do {                             \
@@ -21,6 +22,7 @@ int socket_reuseaddr(int fd);
 
 int bmp_log(const char *fmt, ...);
 int bmp_prompt();
+int bytes_string(uint64_t bytes, char *buf, int len);
 
 
 #endif

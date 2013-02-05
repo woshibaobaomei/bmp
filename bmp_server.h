@@ -10,18 +10,18 @@
  * associated epoll descriptor / queue (eq) that notifies the code when events
  * arrive on the listening socket (and possibly any client sockets)
  */
-#define epev struct epoll_event
+#define epv struct epoll_event
 typedef struct bmp_server_ bmp_server;
 struct bmp_server_ {
-    int   fd;
-    int   eq;
-    epev *ev;
-    short port;
-    int   flags;
-    int   index;
+    int  fd;
+    int  eq;
+    epv *ev;
+    int  port;
  
+    uint32_t    flags;
     uint64_t    bytes;
     uint64_t    msgs;
+    uint64_t    memory;
     uint32_t    clients;
     bmp_client *client[BMP_CLIENT_MAX];
 };

@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
-#include <termios.h>
 
 #include <sys/types.h>
 #include <sys/epoll.h>

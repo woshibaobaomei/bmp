@@ -13,13 +13,17 @@
 static int
 bmp_show_summary(bmp_server *server, char *cmd)
 {
+    char bs[32];
+
     printf("\n");
-    printf("Listening on port : %d\n", server->port);
-    printf("Active BGP clients: %d\n", server->clients);
-    printf("Active BGP peers  : %d\n", 0);
-    printf("BMP messages rcvd : %d\n", 0);
-    printf("Total data rcvd   : %llu\n", server->bytes);
-    printf("Total memory usage: %s\n", "1.2MB");       
+    printf("Listening on port  : %d\n", server->port);
+    printf("Active BGP clients : %d\n", server->clients);
+    printf("Active BGP peers   : %d\n", 0);
+    printf("BMP messages rcvd  : %d\n", 0);
+    bytes_string(server->bytes, bs, sizeof(bs));
+    printf("Total data rcvd    : %s\n", bs);
+    bytes_string(server->memory, bs, sizeof(bs));
+    printf("Total memory usage : %s\n", bs);       
 
     printf("\n");
 

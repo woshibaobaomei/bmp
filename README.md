@@ -36,9 +36,9 @@ logged with a timestamp on the console as well.
 
     BMP# [05:11:33.471] Listening on port 1200
     BMP#
-    BMP# [05:12:02.211] BMP-ADJCHANGE: 10.1.0.1:12012  UP
-    BMP# [05:12:02.521] BMP-ADJCHANGE: 10.1.0.2:13013  UP
-    BMP# [05:12:04.501] BMP-ADJCHANGE: 10.1.0.3:14014  UP
+    BMP# [05:12:02.211] BMP-ADJCHANGE: Client 1  10.1.0.1:22011  UP
+    BMP# [05:12:02.521] BMP-ADJCHANGE: Client 2  1.1.1.1:22012  UP
+    BMP# [05:12:04.501] BMP-ADJCHANGE: Client 3  100.11.0.3:22013  UP
     BMP# 
 
 
@@ -52,8 +52,8 @@ Usage
     BMP# show bmp clients
 
     ID    Address:Port            Uptime    Peers  Messages     Data
-     0   1.1.1.1:12234          00:03:11     2300     10023    2.2MB
-     1   2.2.2.2:23423          01:23:11       22    102323   30.2MB
+     1   1.1.1.1:12234          00:03:11     2300     10023    2.2MB
+     2   2.2.2.2:23423          01:23:11       22    102323   30.2MB
      3   1.1.1.1:12234          00:03:11      300     10023    2.2MB
      4   2.2.2.2:23423          01:23:11       72    102323   30.2MB
      5   1.1.1.1:12234          00:03:11      202     10023    2.2MB

@@ -26,7 +26,8 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     server->client[client->fd] = NULL;
     server->clients--;
 
-    bmp_log("BMP-ADJCHANGE: %d DN (reason: %d)", client->fd, reason);
+    bmp_log("BMP-ADJCHANGE: %d Down (%s)", client->fd,
+             BMP_CLIENT_CLOSE_REASON(reason));
 
 
     close(client->fd); // this will also remove the fd from the epoll queue
@@ -104,12 +105,12 @@ bmp_client_read(bmp_server *server, bmp_client *client)
 
 remote_close:
 
-    bmp_client_close(server, client, 0);
+    bmp_client_close(server, client, BMP_CLIENT_REMOTE_CLOSE);
     return rc;  
 
 read_error:
 
-    bmp_client_close(server, client, 1);
+    bmp_client_close(server, client, BMP_CLIENT_READ_ERROR);
     return rc;         
 }
 
@@ -148,9 +149,10 @@ bmp_client_create(bmp_server *server, int fd)
         return rc;
     }
 
-
     if (fd > BMP_CLIENT_MAX - 1) {
-        
+        bmp_log("new client dropped. fd '%d' > BMP_CLIENT_MAX", fd);
+        close(fd);
+        return -1;
     }
 
     /*
@@ -180,7 +182,7 @@ bmp_client_create(bmp_server *server, int fd)
  
     if (rc < 0) {
         bmp_log("epoll_ctl(EPOLL_CTL_ADD, %d) failed: %s", fd, strerror(errno));
-        bmp_client_close(server, client, 3);
+        bmp_client_close(server, client, BMP_CLIENT_LISTEN_ERROR);
     }
 
     return rc;

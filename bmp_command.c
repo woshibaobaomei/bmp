@@ -34,7 +34,7 @@ bmp_show_summary(bmp_server *server, char *cmd)
 static int
 bmp_show_clients(bmp_server *server, char *cmd)
 {
-    
+ 
     return 0;
 }
 
@@ -81,7 +81,6 @@ bmp_show_command(bmp_server *server, char *cmd)
 static int
 bmp_clear_command(bmp_server *server, char *cmd)
 {
- 
     return 0;
 }
 

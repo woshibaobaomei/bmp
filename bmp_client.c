@@ -143,7 +143,7 @@ bmp_client_create(bmp_server *server, int fd)
     struct epoll_event ev;
     bmp_client *client;
 
-    rc = socket_nonblock(fd);
+    rc = fd_nonblock(fd);
  
     if (rc < 0) {
         return rc;

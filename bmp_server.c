@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 
 #include "bmp_util.h"
+#include "bmp_timer.h"
 #include "bmp_server.h"
 #include "bmp_client.h"
 #include "bmp_command.h"
@@ -52,6 +53,17 @@ bmp_accept_clients(bmp_server *server, int events)
 
 
 int 
+bmp_timer_process(bmp_server *server, int timer)
+{
+    int rc;
+
+    BMP_TIMER_READ(timer, rc);
+
+    return rc;
+}
+
+
+int 
 bmp_server_init(bmp_server *server, int port)
 {
     int rc = 0;
@@ -72,7 +84,7 @@ bmp_server_init(bmp_server *server, int port)
         exit(1);
     }
 
-    rc = socket_reuseaddr(server->fd);
+    rc = so_reuseaddr(server->fd);
 
     if (rc < 0) {
         return rc;
@@ -92,7 +104,7 @@ bmp_server_init(bmp_server *server, int port)
         return rc;
     }
     
-    rc = socket_nonblock(server->fd);
+    rc = fd_nonblock(server->fd);
 
     if (rc < 0) {
         return rc;
@@ -130,7 +142,7 @@ bmp_server_init(bmp_server *server, int port)
 
 
 int 
-bmp_server_run(bmp_server *server)
+bmp_server_run(bmp_server *server, int timer)
 {
     int i, e, n, fd;
 
@@ -141,6 +153,15 @@ bmp_server_run(bmp_server *server)
          * Main blocking call
          */
         n = epoll_wait(server->eq, server->ev, BMP_CLIENT_MAX, -1);
+
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                bmp_log("epoll_wait error: %s", strerror(errno));
+                return -1;
+            }
+        }
 
         for (i = 0; i < n; i++) {
   
@@ -162,35 +183,46 @@ bmp_server_run(bmp_server *server)
 
                 bmp_command_process(server, e);
 
+            } else if (fd == timer) {
+
+                bmp_timer_process(server, timer);
+
             } else {
                 /*
                  * We are processing client connections in the same thread as 
                  * the main server thread
                  */
                 bmp_client_process(server, fd, e);
-            } 
+            }
         }
     }
 
     close(server->fd);
     close(server->eq);
     free(server->ev);
+
+    return 0;
 }    
 
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
-    int rc = 0;
+    int rc = 0, timer;
     bmp_server server;
 
     rc = bmp_server_init(&server, 1111);
 
     if (rc == 0) {
+        timer = bmp_timer_init(&server);
+    }
+
+    if (timer > 0) {
         rc = bmp_command_init(&server);
     }
 
     if (rc == 0) {
-        rc = bmp_server_run(&server);
+        rc = bmp_server_run(&server, timer); // loops indefinitely
     }
 
     bmp_log("Exit\n");

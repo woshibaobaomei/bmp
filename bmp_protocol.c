@@ -15,10 +15,16 @@ bmp_recv_msg_hdr(bmp_server *server, bmp_client *client, char *data, int len)
 static int
 bmp_recv_msg(bmp_server *server, bmp_client *client, char *data, int len)
 {
-    int rc = 0;
     int type;
 
     type = bmp_recv_msg_hdr(server, client, data, len);
+
+    switch (type) {
+    case 0:
+    case 1:
+    default:
+        break;
+    }
 
     return len;
 }

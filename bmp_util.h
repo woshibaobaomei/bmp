@@ -17,8 +17,8 @@ do {                             \
 } while (0);
 
 
-int socket_nonblock(int fd);
-int socket_reuseaddr(int fd);
+int fd_nonblock(int fd);
+int so_reuseaddr(int fd);
 
 int bmp_log(const char *fmt, ...);
 int bmp_prompt();

@@ -54,7 +54,7 @@ bmp_log(const char *format, ...)
 
 
 int 
-socket_nonblock(int fd)
+fd_nonblock(int fd)
 {
     int flags, rc;
 
@@ -76,7 +76,7 @@ socket_nonblock(int fd)
 
 
 int 
-socket_reuseaddr(int fd)
+so_reuseaddr(int fd)
 {
     int rc, optv;
 

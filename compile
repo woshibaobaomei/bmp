@@ -1,6 +1,4 @@
 #!/bin/sh
 
-DEBUG='-g' 
-
-gcc $DEBUG -Wall -o bmp *.c
+gcc -g -Wall -o bmp *.c
 

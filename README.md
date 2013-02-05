@@ -26,7 +26,20 @@ This creates an executable named 'bmp' which takes a port number as an option:
     BMP#
   
 Now the BMP sever is running on port 1200 on your machine. BGP routers can now 
-connect to the machine on this port and start sending BMP messages.
+connect to the machine on this port and start sending BMP messages. There is a
+console prompt started for entering commands that can interact with the server.
+
+    BMP# 
+
+Significant events occurring on the server (new BGP client connection, etc) are
+logged with a timestamp on the console as well.  
+
+    BMP# [05:11:33.471] Listening on port 1200
+    BMP#
+    BMP# [05:12:02.211] BMP-ADJCHANGE: 10.1.0.1:12012  UP
+    BMP# [05:12:02.521] BMP-ADJCHANGE: 10.1.0.2:13013  UP
+    BMP# [05:12:04.501] BMP-ADJCHANGE: 10.1.0.3:14014  UP
+    BMP# 
 
 
 Usage

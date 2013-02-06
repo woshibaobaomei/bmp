@@ -38,14 +38,15 @@ bmp_accept_clients(bmp_server *server, int events)
         fd = accept(server->fd, &caddr, &slen); 
 
         if (fd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                break;
-            }
-            bmp_log("accept() failed: %s", strerror(errno));
-            break;
-        }
 
-        rc = bmp_client_create(server, fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+
+            bmp_log("accept() failed: %s", strerror(errno));
+
+        } else {
+
+            rc = bmp_client_create(server, fd);
+        }
     }
   
     return rc;

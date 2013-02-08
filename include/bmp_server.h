@@ -22,6 +22,7 @@ struct bmp_server_ {
     uint64_t  bytes;
     uint64_t  msgs;
     uint64_t  memory;
+    uint32_t  peers;
     avl_tree *clients;
 };
 

@@ -47,7 +47,7 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
 
     avl_remove(server->clients, client, NULL);
 
-    bmp_log("BMP-ADJCHANGE: %d Down (%s)", client->fd,
+    bmp_log("BMP-ADJCHANGE: %s:%d Down (%s)", client->name, client->port,
              BMP_CLIENT_CLOSE_REASON(reason));
 
 

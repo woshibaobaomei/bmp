@@ -2,6 +2,7 @@
 #define __BMP_UTIL_H__
 
 #include <stdint.h>
+#include <netinet/in.h>
 
 #define NEXT_TOKEN(cmd, tok)     \
 do {                             \
@@ -16,6 +17,16 @@ do {                             \
     cmd = tmp+1;                 \
 } while (0);
 
+
+typedef union bmp_sockaddr_ {
+    short               af;
+    struct sockaddr_in  ipv4;
+    struct sockaddr_in6 ipv6;
+} bmp_sockaddr;
+
+int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b);
+int bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len);
+char *bmp_sockaddr_ip(bmp_sockaddr *a);
 
 int fd_nonblock(int fd);
 int so_reuseaddr(int fd);

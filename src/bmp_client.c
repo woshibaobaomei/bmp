@@ -3,11 +3,33 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include "bmp_util.h"
+#include "bmp_peer.h"
 #include "bmp_client.h"
 #include "bmp_server.h"
 #include "bmp_protocol.h"
+
+
+int
+bmp_client_compare(void *a, void *b, void *c)
+{
+    bmp_client *A = (bmp_client*)a;
+    bmp_client *B = (bmp_client*)b;
+
+    return (A->fd - B->fd);
+}
+
+int
+bmp_client_addr_compare(void *a, void *b, void *c)
+{
+    //bmp_client *A;
+    //bmp_client *B;
+
+    //return bmp_sockaddr_compare(&A->addr, &B->addr);
+    return -1;
+}
 
 
 static void
@@ -23,8 +45,7 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     assert(client != NULL);
     assert(client->fd != 0);
 
-    server->client[client->fd] = NULL;
-    server->clients--;
+    avl_remove(server->clients, client, NULL);
 
     bmp_log("BMP-ADJCHANGE: %d Down (%s)", client->fd,
              BMP_CLIENT_CLOSE_REASON(reason));
@@ -120,8 +141,10 @@ bmp_client_process(bmp_server *server, int fd, int events)
 {
     int rc = 0;
     bmp_client *client;
+    bmp_client  lookup;
 
-    client = server->client[fd];
+    lookup.fd = fd;
+    client = (bmp_client*)avl_lookup(server->clients, &lookup, NULL);
 
     assert(client != NULL);
     assert(client->fd == fd);
@@ -133,11 +156,11 @@ bmp_client_process(bmp_server *server, int fd, int events)
 
 
 /* 
- * Create a bmp_client entry in the server->client list
+ * Create a bmp_client entry in the server->client avl tree
  * Queue the accepted fd to the same epoll queue as the server socket
  */
 int
-bmp_client_create(bmp_server *server, int fd)
+bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t slen)
 {
     int rc;
     struct epoll_event ev;
@@ -155,10 +178,6 @@ bmp_client_create(bmp_server *server, int fd)
         return -1;
     }
 
-    /*
-     * Use the fd as an index into the server->client array and initialize
-     * the client slot
-     */
     client = calloc(1, sizeof(bmp_client));
 
     if (client == NULL) {
@@ -166,12 +185,20 @@ bmp_client_create(bmp_server *server, int fd)
     } 
 
     client->fd = fd;
-    assert(server->client[fd] == NULL);
-    server->client[fd] = client;
     client->rdptr = client->rdbuf;
-    server->clients++;   
+    client->peers = avl_new(bmp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
+
+    if (client->peers == NULL) {
+        return -1;
+    }
+
+    memcpy(&client->addr, addr, slen);
+    client->port = bmp_sockaddr_string(&client->addr, client->name, 128);
+    gettimeofday(&client->time, NULL);
+
+    avl_insert(server->clients, client, NULL); 
  
-    bmp_log("BMP-ADJCHANGE: %d UP", fd);
+    bmp_log("BMP-ADJCHANGE: %s:%d UP", client->name, client->port);
    
     /*
      * Queue the client fd into the server's epoll queue

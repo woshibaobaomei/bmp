@@ -11,6 +11,12 @@
 #define BMP_TERMINATION_MESSAGE    5
 
 
+#define BMP_PEER_TYPE_GLOBAL 0
+#define BMP_PEER_TYPE_L3VPN  1
+#define BMP_PEER_FLAG_V      0x01
+#define BMP_PEER_FLAG_L      0x02
+
+
 /*
  *   0 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8
  *   +-+-+-+-+-+-+-+-+

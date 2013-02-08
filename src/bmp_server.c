@@ -45,7 +45,7 @@ bmp_accept_clients(bmp_server *server, int events)
 
         } else {
 
-            rc = bmp_client_create(server, fd);
+            rc = bmp_client_create(server, fd, &caddr, slen);
         }
     }
   
@@ -70,6 +70,8 @@ bmp_server_init(bmp_server *server, int port)
     int rc = 0;
     struct epoll_event ev;
     struct sockaddr_in saddr;
+
+    memset(server, 0, sizeof(bmp_server));
 
     server->port = port;
 
@@ -135,8 +137,7 @@ bmp_server_init(bmp_server *server, int port)
         return -1;
     }
 
-    server->clients = 0;
-    memset(server->client, 0, BMP_CLIENT_MAX*sizeof(bmp_client *));
+    server->clients = avl_new(bmp_client_compare, NULL, AVL_TREE_INTRUSIVE);
  
     return rc;
 }

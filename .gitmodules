@@ -1,0 +1,3 @@
+[submodule "lib/avl"]
+	path = lib/avl
+	url = https://github.com/forhadahmed/avl.git

@@ -6,7 +6,52 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
+
+#include "bmp_util.h"
+
+int 
+bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
+{
+    return -1;
+}
+
+
+int 
+bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
+{
+    int port;
+
+    switch (a->af) {
+    case AF_INET:
+        inet_ntop(AF_INET, &a->ipv4.sin_addr, buf, len);
+        port = a->ipv4.sin_port;
+        break;
+    case AF_INET6:
+        inet_ntop(AF_INET6, &a->ipv6.sin6_addr, buf, len);
+        port = a->ipv6.sin6_port;
+        break;
+    default:
+        break;
+    }
+
+    return port;
+}
+
+char *
+bmp_sockaddr_ip(bmp_sockaddr *a)
+{
+    switch (a->af) {
+    case AF_INET:
+        return (char*)&a->ipv4.sin_addr;
+    case AF_INET6:
+        return (char*)&a->ipv6.sin6_addr;
+    default:
+        break;
+    }
+    return NULL;
+}
 
 
 int

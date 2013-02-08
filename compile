@@ -1,4 +1,5 @@
 #!/bin/sh
 
-gcc -g -Wall -o bmp *.c
+gcc -g -Wall -o bmp src/*.c -Iinclude \
+lib/avl/src/*.c -Ilib/avl/include/
 

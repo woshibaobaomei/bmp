@@ -18,12 +18,11 @@ struct bmp_server_ {
     epv *ev;
     int  port;
  
-    uint32_t    flags;
-    uint64_t    bytes;
-    uint64_t    msgs;
-    uint64_t    memory;
-    uint32_t    clients;
-    bmp_client *client[BMP_CLIENT_MAX];
+    uint32_t  flags;
+    uint64_t  bytes;
+    uint64_t  msgs;
+    uint64_t  memory;
+    avl_tree *clients;
 };
 
 

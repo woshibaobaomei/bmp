@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 #include <sys/time.h>
+#include "avl.h"
+#include "bmp_util.h"
  
-
+ 
 #define BMP_CLIENT_MAX     (1 << 10)
 #define BMP_RDBUF_MAX      (1 << 16) 
 #define BMP_RDBUF_SPACE(c) ((c)->rdbuf+BMP_RDBUF_MAX-(c)->rdptr)
@@ -18,16 +20,21 @@ typedef struct bmp_client_  bmp_client;
  * is sending us data it receives (BGP updates) from its connected peers.  
  */
 struct bmp_client_ {
-    int          fd;
-    char        *rdptr;
-    char         rdbuf[BMP_RDBUF_MAX];
-    int          index;
-    
-    uint32_t     flags;
-    uint64_t     bytes;
-    uint64_t     msgs;    
-    bmp_message *head;
-    bmp_message *tail;
+    avl_node  avl;
+    int       fd;
+    char     *rdptr;
+    char      rdbuf[BMP_RDBUF_MAX];
+    char      name[128];
+
+    bmp_sockaddr    addr;
+    uint16_t        port;
+    struct timeval  time;
+    uint32_t        flags;
+    uint64_t        bytes;
+    uint64_t        msgs;    
+    bmp_message    *head;
+    bmp_message    *tail;
+    avl_tree       *peers;
 };
 
  
@@ -51,9 +58,12 @@ struct bmp_message_ {
                                     "unknown")
 
 
-int bmp_client_create(struct bmp_server_ *server, int fd);
+int bmp_client_create(struct bmp_server_ *server, int fd, struct sockaddr *addr, socklen_t slen);
 int bmp_client_process(struct bmp_server_ *server, int fd, int events);
 int bmp_client_close(struct bmp_server_ *server, bmp_client *client, int reason);
+int bmp_client_compare(void *a, void *b, void *c);
+int bmp_client_addr_compare(void *a, void *b, void *c);
+
 
 #endif
 

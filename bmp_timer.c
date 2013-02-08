@@ -8,13 +8,14 @@
 #include "bmp_server.h"
 
 /*
- * Implements a periodic timer based on alarm() and signal(). The SIGALRM will
- * interrupt the BMP server asynchronously, regardless of what its doing, which
- * is not desirable. What's needed is a timer that is handled as an 'fd' right 
- * along with all the other fd's that the BMP server is waiting for in its main 
- * loop. The timerfd_create API can be used to implement this but its not very 
- * portable, so here is an implementation that achieves pretty much the same 
- * thing using pipes, which is much more portable! 
+ * Implements a periodic timer based on alarm() and signal(). A 'SIGALRM' will
+ * interrupt the BMP server asynchronously, possibly while it's in the middle 
+ * of handling an event, so any real work that messes with the data cannot be 
+ * done in the signal handler. What is needed, instead, is a timer that is 
+ * handled as an 'fd' right  along with all the other fd's that the BMP server 
+ * is waiting for in its main event loop. The timerfd_create API can be used to 
+ * implement this but its not very portable, so here is an implementation that 
+ * achieves pretty much the same thing using pipes which is much more portable 
  */
 
 #define BMP_TIMERFD_MAX 8
@@ -84,10 +85,14 @@ bmp_timer_init(bmp_server *server)
         return rc;
     }
 
-    // register the write-end of the pipe with the timer module
+    /*
+     * Register the write-end of the pipe with the timer module
+     */
     timerfd[timerfds++] = timer[1];
 
-    // register the read-end of the pipe with the server's epoll queue
+    /*
+     * Register the read-end of the pipe with the server's epoll queue
+     */
     ev.data.fd = timer[0];
     ev.events = EPOLLIN | EPOLLET;
    

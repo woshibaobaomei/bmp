@@ -16,9 +16,9 @@ typedef struct bmp_message_ bmp_message;
 typedef struct bmp_client_  bmp_client;
 
 enum {
-    BMP_CLIENT_AVL_FD = 0,
-    BMP_CLIENT_AVL_ADDR,
-    BMP_CLIENT_AVL_MAX
+    BMP_CLIENT_FD = 0,
+    BMP_CLIENT_ADDR,
+    BMP_CLIENT_AVL
 };
 
 /*
@@ -26,7 +26,7 @@ enum {
  * is sending us data it receives (BGP updates) from its connected peers.  
  */
 struct bmp_client_ {
-    avl_node  avl[BMP_CLIENT_AVL_MAX];
+    avl_node  avl[BMP_CLIENT_AVL];
     int       fd;
     char     *rdptr;
     char      rdbuf[BMP_RDBUF_MAX];

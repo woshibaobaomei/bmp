@@ -15,8 +15,8 @@
 int
 bmp_client_fd_compare(void *a, void *b, void *c)
 {
-    bmp_client *A = (bmp_client*);
-    bmp_client *B = (bmp_client*);
+    bmp_client *A = (bmp_client*)a;
+    bmp_client *B = (bmp_client*)b;
 
     return (A->fd - B->fd);
 }

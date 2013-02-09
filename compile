@@ -1,5 +1,14 @@
 #!/bin/sh
 
+
+if [ "$ls -a lib/avl" ]; then
+  : 
+else
+  git submodule init
+  git submodule update
+fi     
+
+
 gcc -g -Wall -o bmp src/*.c -Iinclude \
 lib/avl/src/*.c -Ilib/avl/include/
 

@@ -24,8 +24,8 @@ bmp_client_fd_compare(void *a, void *b, void *c)
 int
 bmp_client_addr_compare(void *a, void *b, void *c)
 {
-    bmp_client *A = (bmp_client*)(a - sizeof(avl_node));
-    bmp_client *B = (bmp_client*)(b - sizeof(avl_node));
+    bmp_client *A = (bmp_client*)a;
+    bmp_client *B = (bmp_client*)b;
 
     return bmp_sockaddr_compare(&A->addr, &B->addr);
 }
@@ -44,8 +44,7 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     assert(client != NULL);
     assert(client->fd != 0);
 
-    avl_remove(server->clients[0], &client->avl[0], NULL);
-    avl_remove(server->clients[1], &client->avl[1], NULL);
+    avl_multi_remove(server->clients, client, NULL);
 
     bmp_log("BMP-ADJCHANGE: %s:%d Down (%s)", client->name, client->port,
              BMP_CLIENT_CLOSE_REASON(reason));
@@ -144,7 +143,7 @@ bmp_client_process(bmp_server *server, int fd, int events)
     bmp_client  lookup;
 
     lookup.fd = fd;
-    client = (bmp_client*) avl_lookup(server->clients[0], &lookup.avl[0], NULL);
+    client = (bmp_client*) avl_lookup(server->clients, &lookup, NULL);
 
     assert(client != NULL);
     assert(client->fd == fd);
@@ -186,7 +185,7 @@ bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t s
 
     client->fd = fd;
     client->rdptr = client->rdbuf;
-    client->peers = avl_new(bmp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
+    client->peers = avl_init(bmp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
 
     if (client->peers == NULL) {
         return -1;
@@ -196,8 +195,7 @@ bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t s
     client->port = bmp_sockaddr_string(&client->addr, client->name, 128);
     gettimeofday(&client->time, NULL);
 
-    avl_insert(server->clients[0], &client->avl[0], NULL); 
-    avl_insert(server->clients[1], &client->avl[1], NULL);
+    avl_multi_insert(server->clients, client, NULL); 
  
     bmp_log("BMP-ADJCHANGE: %s:%d UP", client->name, client->port);
    

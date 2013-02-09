@@ -10,6 +10,27 @@
 #include "bmp_command.h"
 #include "bmp_server.h"
 
+char *space[] = {
+    " ",
+    "  ",
+    "   ",
+    "    ",
+    "     ",
+    "      ",
+    "       ",
+    "        ",
+    "         ",
+    "          ",
+    "           ",
+    "            ",
+    "             ",
+    "              ",
+    "               ",
+    "                ",
+    "                 ",
+    "                  ",
+};
+
 
 static int
 bmp_show_summary(bmp_server *server, char *cmd)
@@ -33,9 +54,48 @@ bmp_show_summary(bmp_server *server, char *cmd)
 
 
 static int
+bmp_show_clients_walker(void *node, void *ctx)
+{
+    int id = ++(*((int*)ctx));
+
+    char as[64];
+    char up[32];
+    char pe[32];
+    char ms[32];
+    char bs[64];
+
+    bmp_client *client = node;
+    snprintf(as, sizeof(as), "%s:%d", client->name, client->port);
+    snprintf(up, sizeof(up), "00:00:00");
+    snprintf(pe, sizeof(pe), "%d", avl_size(client->peers));
+    snprintf(ms, sizeof(ms), "%llu", client->msgs);
+    bytes_string(client->bytes, bs, sizeof(bs));
+
+    if (id == 1) 
+    printf(" ID    Address:Port               Uptime          Peers     Msgs      Data\n");
+    printf("%3d    %s%s"                      "%s%s"         "%s%s"    "%s%s"    "%s  \n", 
+           id, 
+           as, 
+           space[26-strlen(as)], 
+           up,
+           space[15-strlen(up)],
+           pe,
+           space[9-strlen(pe)],
+           ms,
+           space[9-strlen(ms)], 
+           bs);
+ 
+    return AVL_SUCCESS;
+}
+
+
+static int
 bmp_show_clients(bmp_server *server, char *cmd)
 {
- 
+    int id = 0;
+    printf("\n");
+    avl_walk(&server->clients[BMP_CLIENT_ADDR], bmp_show_clients_walker, &id, 0);
+    printf("\n");
     return 0;
 }
 

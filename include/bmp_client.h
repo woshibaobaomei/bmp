@@ -15,17 +15,26 @@ struct bmp_server_;
 typedef struct bmp_message_ bmp_message;
 typedef struct bmp_client_  bmp_client;
 
+enum {
+    BMP_CLIENT_AVL_FD = 0,
+    BMP_CLIENT_AVL_ADDR,
+    BMP_CLIENT_AVL_MAX
+};
+
 /*
  * The bmp_client type represents a BGP speaker that has connected to us and 
  * is sending us data it receives (BGP updates) from its connected peers.  
  */
 struct bmp_client_ {
-    avl_node  avl;
+    avl_node  avl[BMP_CLIENT_AVL_MAX];
     int       fd;
     char     *rdptr;
     char      rdbuf[BMP_RDBUF_MAX];
     char      name[128];
 
+    /*
+     *
+     */
     bmp_sockaddr    addr;
     uint16_t        port;
     struct timeval  time;
@@ -61,7 +70,7 @@ struct bmp_message_ {
 int bmp_client_create(struct bmp_server_ *server, int fd, struct sockaddr *addr, socklen_t slen);
 int bmp_client_process(struct bmp_server_ *server, int fd, int events);
 int bmp_client_close(struct bmp_server_ *server, bmp_client *client, int reason);
-int bmp_client_compare(void *a, void *b, void *c);
+int bmp_client_fd_compare(void *a, void *b, void *c);
 int bmp_client_addr_compare(void *a, void *b, void *c);
 
 

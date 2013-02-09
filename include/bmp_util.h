@@ -2,6 +2,7 @@
 #define __BMP_UTIL_H__
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 
 #define NEXT_TOKEN(cmd, tok)     \

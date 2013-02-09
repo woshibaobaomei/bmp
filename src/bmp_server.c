@@ -137,7 +137,8 @@ bmp_server_init(bmp_server *server, int port)
         return -1;
     }
 
-    server->clients = avl_new(bmp_client_compare, NULL, AVL_TREE_INTRUSIVE);
+    server->clients[BMP_CLIENT_AVL_FD] = avl_new(bmp_client_fd_compare, NULL, AVL_TREE_INTRUSIVE);
+    server->clients[BMP_CLIENT_AVL_ADDR] = avl_new(bmp_client_addr_compare, NULL, AVL_TREE_INTRUSIVE);
  
     return rc;
 }

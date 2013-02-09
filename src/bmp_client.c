@@ -13,10 +13,10 @@
 
 
 int
-bmp_client_compare(void *a, void *b, void *c)
+bmp_client_fd_compare(void *a, void *b, void *c)
 {
-    bmp_client *A = (bmp_client*)a;
-    bmp_client *B = (bmp_client*)b;
+    bmp_client *A = (bmp_client*)(a - BMP_CLIENT_AVL_FD * sizeof(avl_node));
+    bmp_client *B = (bmp_client*)(b - BMP_CLIENT_AVL_FD * sizeof(avl_node));
 
     return (A->fd - B->fd);
 }
@@ -24,11 +24,10 @@ bmp_client_compare(void *a, void *b, void *c)
 int
 bmp_client_addr_compare(void *a, void *b, void *c)
 {
-    //bmp_client *A;
-    //bmp_client *B;
+    bmp_client *A = (bmp_client*)(a - BMP_CLIENT_AVL_ADDR * sizeof(avl_node));
+    bmp_client *B = (bmp_client*)(b - BMP_CLIENT_AVL_ADDR * sizeof(avl_node));
 
-    //return bmp_sockaddr_compare(&A->addr, &B->addr);
-    return -1;
+    return bmp_sockaddr_compare(&A->addr, &B->addr);
 }
 
 
@@ -45,7 +44,8 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
     assert(client != NULL);
     assert(client->fd != 0);
 
-    avl_remove(server->clients, client, NULL);
+    avl_remove(server->clients[BMP_CLIENT_AVL_FD], &client->avl[BMP_CLIENT_AVL_FD], NULL);
+    avl_remove(server->clients[BMP_CLIENT_AVL_ADDR], &client->avl[BMP_CLIENT_AVL_ADDR], NULL);
 
     bmp_log("BMP-ADJCHANGE: %s:%d Down (%s)", client->name, client->port,
              BMP_CLIENT_CLOSE_REASON(reason));
@@ -144,7 +144,7 @@ bmp_client_process(bmp_server *server, int fd, int events)
     bmp_client  lookup;
 
     lookup.fd = fd;
-    client = (bmp_client*)avl_lookup(server->clients, &lookup, NULL);
+    client = (bmp_client*) avl_lookup(server->clients[BMP_CLIENT_AVL_FD], &lookup.avl[BMP_CLIENT_AVL_FD], NULL);
 
     assert(client != NULL);
     assert(client->fd == fd);
@@ -196,7 +196,8 @@ bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t s
     client->port = bmp_sockaddr_string(&client->addr, client->name, 128);
     gettimeofday(&client->time, NULL);
 
-    avl_insert(server->clients, client, NULL); 
+    avl_insert(server->clients[BMP_CLIENT_AVL_FD], &client->avl[BMP_CLIENT_AVL_FD], NULL); 
+    avl_insert(server->clients[BMP_CLIENT_AVL_ADDR], &client->avl[BMP_CLIENT_AVL_ADDR], NULL);
  
     bmp_log("BMP-ADJCHANGE: %s:%d UP", client->name, client->port);
    

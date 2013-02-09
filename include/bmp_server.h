@@ -23,7 +23,7 @@ struct bmp_server_ {
     uint64_t  msgs;
     uint64_t  memory;
     uint32_t  peers;
-    avl_tree *clients;
+    avl_tree *clients[BMP_CLIENT_AVL_MAX];
 };
 
 

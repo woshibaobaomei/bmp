@@ -18,7 +18,7 @@ bmp_show_summary(bmp_server *server, char *cmd)
 
     printf("\n");
     printf("Listening on port  : %d\n", server->port);
-    printf("Active BGP clients : %d\n", avl_size(server->clients));
+    printf("Active BGP clients : %d\n", avl_size(server->clients[1]));
     printf("Active BGP peers   : %d\n", 0);
     printf("BMP messages rcvd  : %d\n", 0);
     bytes_string(server->bytes, bs, sizeof(bs));

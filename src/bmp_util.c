@@ -11,12 +11,6 @@
 
 #include "bmp_util.h"
 
-int 
-bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
-{
-    return -1;
-}
-
 
 int 
 bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
@@ -35,7 +29,6 @@ bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
     default:
         break;
     }
-
     return port;
 }
 
@@ -51,6 +44,39 @@ bmp_sockaddr_ip(bmp_sockaddr *a)
         break;
     }
     return NULL;
+}
+
+uint16_t
+bmp_sockaddr_port(bmp_sockaddr *a)
+{
+    switch (a->af) {
+    case AF_INET:
+        return a->ipv4.sin_port;
+    case AF_INET6:
+        return a->ipv6.sin6_port;
+    default:
+        break;
+    }
+    return 0;
+}
+
+
+int 
+bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
+{
+    int cmp;
+
+    if (a->af != b->af) return a->af - b->af;
+    
+    cmp = memcmp(bmp_sockaddr_ip(a), 
+                 bmp_sockaddr_ip(b), 
+                 a->af == AF_INET ? 
+                 sizeof(struct in_addr) :
+                 sizeof(struct in6_addr));
+
+    if (cmp) return cmp;
+
+    return bmp_sockaddr_port(a) - bmp_sockaddr_port(b);
 }
 
 

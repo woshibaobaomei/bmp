@@ -8,6 +8,7 @@
 
 #include "avl.h"
 #include "bmp_util.h"
+#include "bmp_control.h"
 #include "bmp_command.h"
 #include "bmp_server.h"
 
@@ -178,16 +179,13 @@ bmp_command_local_accept(int sock)
 
         fd = accept(sock, &caddr, &slen); 
 
-        if (fd < 0) {
+        if (fd > 0) return fd;
 
-            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) break;
 
-            bmp_log("accept() failed: %s", strerror(errno));
+        bmp_log("accept() failed: %s", strerror(errno));
 
-        } else {
-
-            return fd;
-        }
+        return -1;
     }  
 
     return -1;
@@ -248,7 +246,7 @@ bmp_command_local_init(bmp_server *server)
  
     memset(&saddr, 0, sizeof(saddr));
     saddr.sun_family = AF_UNIX;
-    snprintf(saddr.sun_path, sizeof(saddr.sun_path), "/bmp-%d", server->port);
+    snprintf(saddr.sun_path, sizeof(saddr.sun_path), BMP_UNIX_PATH, server->port);
  
     unlink(saddr.sun_path);       
     if (bind(fd, (const struct sockaddr *) &saddr, sizeof(saddr)) < 0) {

@@ -1,9 +1,10 @@
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+#include "bmp_control.h"
 
 #define BUF_MAX 1024
 
@@ -22,12 +23,12 @@ bmp_control_server_connect(int port)
 
     memset(&saddr, 0, sizeof(struct sockaddr_un));
     saddr.sun_family = AF_UNIX;
-    snprintf(saddr.sun_path, sizeof(saddr.sun_path), "/bmp-%d", port);
+    snprintf(saddr.sun_path, sizeof(saddr.sun_path), BMP_UNIX_PATH, port);
 
     rc = connect(fd, (struct sockaddr *) &saddr, sizeof(struct sockaddr_un));
 
     if (rc < 0) {
-        fprintf(stderr, "%% BMP server not running on port: %d\n", port);
+        fprintf(stderr, "%% Could not connect to BMP server running on port: %d\n", port);
         return -1;
     }
 

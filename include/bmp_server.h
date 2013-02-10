@@ -17,6 +17,7 @@ struct bmp_server_ {
     int  eq;
     epv *ev;
     int  port;
+    int  ctl;
  
     uint32_t  flags;
     uint64_t  bytes;

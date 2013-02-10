@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/epoll.h>
@@ -143,6 +144,15 @@ bmp_server_init(bmp_server *server, int port)
     };
 
     server->clients = avl_multi_init(bmp_client_compare, NULL, BMP_CLIENT_AVL, 0);
+
+    /* 
+     * Always start the non-interactive control channel (Unix Domain Socket)
+     */
+    rc = server->ctl = bmp_command_init(server, 0);
+
+    if (rc < 0) {
+
+    }
  
     return rc;
 }
@@ -152,6 +162,7 @@ int
 bmp_server_run(bmp_server *server, int timer)
 {
     int i, e, n, fd;
+    bmp_client search, *client = NULL;
 
     bmp_log("Listening on port: %d", server->port);
  
@@ -181,22 +192,31 @@ bmp_server_run(bmp_server *server, int timer)
                  */
                 continue;
             } 
+
+            search.fd = fd;
+            client = (bmp_client*) avl_lookup(server->clients, &search, 0);
+
+            if (client) { // handle client event
+                bmp_client_process(server, client, e);
+                continue;
+            }
  
             if (fd == server->fd) { // server's listen socket - accept clients
 
                 bmp_accept_clients(server, e);
 
-            } else if (fd == STDIN_FILENO) { // input pty - process commands
+            } else if (fd == STDIN_FILENO) { // process commands
 
-                bmp_command_process(server, e);
+                bmp_command_process(server, fd, e);
+
+            } else if (fd == server->ctl) {
+
+                bmp_command_process(server, fd, e);
 
             } else if (fd == timer) { // periodic timer
 
                 bmp_timer_process(server, timer);
 
-            } else { // handle client event
- 
-                bmp_client_process(server, fd, e);
             }
         }
     }
@@ -214,6 +234,9 @@ main(int argc, char *argv[])
 {
     int rc = 0, timer;
     bmp_server server;
+    int interactive = 1;
+
+    signal(SIGPIPE, SIG_IGN);
 
     rc = bmp_server_init(&server, 1111);
 
@@ -221,8 +244,11 @@ main(int argc, char *argv[])
         timer = bmp_timer_init(&server);
     }
 
-    if (timer > 0) {
-        rc = bmp_command_init(&server);
+    /*
+     * Start the interactive control channel if specified via command line
+     */
+    if (timer > 0 && interactive) {
+        rc = bmp_command_init(&server, 1);
     }
 
     if (rc == 0) {

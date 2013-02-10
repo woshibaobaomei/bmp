@@ -136,17 +136,11 @@ read_error:
 
 
 int
-bmp_client_process(bmp_server *server, int fd, int events)
+bmp_client_process(bmp_server *server, bmp_client *client, int events)
 {
     int rc = 0;
-    bmp_client *client;
-    bmp_client  lookup;
-
-    lookup.fd = fd;
-    client = (bmp_client*) avl_lookup(server->clients, &lookup, NULL);
 
     assert(client != NULL);
-    assert(client->fd == fd);
 
     rc = bmp_client_read(server, client);
 

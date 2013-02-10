@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+extern char *space[];
+
 #define NEXT_TOKEN(cmd, tok)     \
 do {                             \
     char *tmp = cmd;             \

@@ -13,23 +13,23 @@ fi
 #
 # bmpd - the BMP server
 # 
-gcc -g -Wall -o bmpd \
-src/bmp_server.c     \
-src/bmp_client.c     \
-src/bmp_peer.c       \
-src/bmp_protocol.c   \
-src/bmp_command.c    \
-src/bmp_timer.c      \
-src/bmp_util.c       \
--Iinclude            \
-lib/avl/src/*.c      \
+gcc -g -Wall -o bmpd  \
+ src/bmp_server.c     \
+ src/bmp_client.c     \
+ src/bmp_peer.c       \
+ src/bmp_protocol.c   \
+ src/bmp_command.c    \
+ src/bmp_timer.c      \
+ src/bmp_util.c       \
+-Iinclude             \
+ lib/avl/src/*.c      \
 -Ilib/avl/include/
 
 #
 # The BMP control tool (show commands, etc)
 #
-gcc -g -Wall -o bmp  \
-src/bmp_control.c    \
-src/bmp_util.c       \
+gcc -g -Wall -o bmp   \
+ src/bmp_control.c    \
+ src/bmp_util.c       \
 -Iinclude
 

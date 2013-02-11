@@ -11,26 +11,36 @@
 
 #include "bmp_util.h"
 
+#define SPC  " "
+#define SPC2 SPC  SPC
+#define SPC3 SPC2 SPC
+#define SPC4 SPC3 SPC
+#define SPC5 SPC4 SPC
+#define SPC6 SPC5 SPC
+#define SPC7 SPC6 SPC
+#define SPC8 SPC7 SPC
+#define SPC9 SPC8 SPC
 
-char *space[] = {
-    " ",
-    "  ",
-    "   ",
-    "    ",
-    "     ",
-    "      ",
-    "       ",
-    "        ",
-    "         ",
-    "          ",
-    "           ",
-    "            ",
-    "             ",
-    "              ",
-    "               ",
-    "                ",
-    "                 ",
-    "                  ",
+
+char *space[] = { 
+    SPC, 
+    SPC2, 
+    SPC3, 
+    SPC4, 
+    SPC5, 
+    SPC6, 
+    SPC7, 
+    SPC8, 
+    SPC9,
+    SPC9 SPC, 
+    SPC9 SPC2, 
+    SPC9 SPC3, 
+    SPC9 SPC4,
+    SPC9 SPC5, 
+    SPC9 SPC6,
+    SPC9 SPC7,
+    SPC9 SPC8,
+    SPC9 SPC9
 };
 
 

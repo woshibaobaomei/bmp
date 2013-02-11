@@ -19,8 +19,10 @@
 #include "bmp_timer.h"
 #include "bmp_server.h"
 #include "bmp_client.h"
+#include "bmp_control.h"
 #include "bmp_command.h"
 
+static bmp_server server;
 
 /*
  * accept() connections from a server socket fd and create new client structs
@@ -154,7 +156,7 @@ bmp_server_init(bmp_server *server, int port)
 
     }
  
-    return rc;
+    return 0;
 }
 
 
@@ -226,17 +228,32 @@ bmp_server_run(bmp_server *server, int timer)
     free(server->ev);
 
     return 0;
-}    
+}   
+ 
+ 
+static void
+bmp_server_exit(int signo)
+{
+    char path[128];
+    snprintf(path, sizeof(path), BMP_UNIX_PATH, server.port);
+
+    unlink(path);
+
+    close(server.ctl);
+    
+    exit(1);
+}
 
 
 int
 main(int argc, char *argv[])
 {
     int rc = 0, timer;
-    bmp_server server;
     int interactive = 1;
 
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT,  bmp_server_exit);
+    signal(SIGTERM, bmp_server_exit);
 
     rc = bmp_server_init(&server, 1111);
 
@@ -254,6 +271,9 @@ main(int argc, char *argv[])
     if (rc == 0) {
         rc = bmp_server_run(&server, timer); // loops indefinitely
     }
+
+
+    bmp_server_exit(0);
 
     bmp_log("Exit\n");
 

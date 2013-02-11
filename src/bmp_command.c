@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/un.h>
 #include <sys/epoll.h>
+#include <sys/time.h>
 
 #include "avl.h"
 #include "bmp_util.h"
@@ -13,6 +14,7 @@
 #include "bmp_server.h"
 
 static int out;
+static struct timeval now;
 
 
 static int
@@ -49,7 +51,7 @@ bmp_show_clients_walker(void *node, void *ctx)
 
     bmp_client *client = node;
     snprintf(as, sizeof(as), "%s:%d", client->name, client->port);
-    snprintf(up, sizeof(up), "00:00:00");
+    uptime_string(now.tv_sec - client->time.tv_sec, up, sizeof(up));
     snprintf(pe, sizeof(pe), "%d", avl_size(client->peers));
     snprintf(ms, sizeof(ms), "%llu", client->msgs);
     bytes_string(client->bytes, bs, sizeof(bs));
@@ -86,6 +88,103 @@ bmp_show_clients(bmp_server *server, char *cmd)
 }
 
 
+static int 
+bmp_show_client(bmp_server *server, bmp_client *client)
+{
+    return 0;
+}
+
+
+static int
+bmp_show_client_messages(bmp_server *server, bmp_client *client)
+{
+
+    return 0;
+}
+
+
+static int
+bmp_show_client_peers(bmp_server *server, bmp_client *client)
+{
+
+    return 0;
+}
+
+
+static int
+bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
+{
+
+    return 0;
+}
+
+ 
+static bmp_client *
+bmp_find_client_token(char *token)
+{
+    int  id, ip[16], port;
+
+    if (sscanf(token, "%u.%u.%u.%u:%u", &ip[0], &ip[1], &ip[2], &ip[3], &port) == 1) {
+    }
+
+    if (sscanf(token, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]) == 1) {
+        // If only the IP address was specified, there is a possibility that there
+        // are multiple clients with the same IP address but different port numbers.
+        // In this case, we can't really do much.. the user *has* to specify the
+        // port
+    }
+
+    if (sscanf(token, "%d", &id) == 1) {
+
+    }
+
+    return NULL;
+}
+
+
+static int
+bmp_show_client_command(bmp_server *server, char *cmd)
+{
+    char *token = NULL;
+    int rc = 0;
+    bmp_client *client = NULL;
+
+    NEXT_TOKEN(cmd, token);
+
+    if (!token) {
+        dprintf(out, "%% Expected a keyword after 'client'\n");
+        return -1;
+    }
+
+    client = bmp_find_client_token(token);
+
+    if (!client) {
+        dprintf(out, "%% No client '%s' found", token);
+        return -1;
+    }
+
+    NEXT_TOKEN(cmd, token);
+
+    if (!token) {
+        rc = bmp_show_client(server, client);
+        return rc;
+    }
+
+    if (strcmp(token, "messages") == 0) {
+        rc = bmp_show_client_messages(server, client);
+    } else if (strcmp(token, "peers") == 0) {
+        rc = bmp_show_client_peers(server, client);
+    } else if (strcmp(token, "peer") == 0) {
+        rc = bmp_show_client_peer_command(server, client, cmd);
+    } else {
+        dprintf(out, "%% Invalid keyword after 'show': %s\n", token);
+    }
+ 
+    return rc;
+
+}
+
+
 static int
 bmp_show_command(bmp_server *server, char *cmd)
 {
@@ -103,6 +202,8 @@ bmp_show_command(bmp_server *server, char *cmd)
         rc = bmp_show_summary(server, cmd);
     } else if (strcmp(token, "clients") == 0) {
         rc = bmp_show_clients(server, cmd);
+    } else if (strcmp(token, "client") == 0) {
+        rc = bmp_show_client_command(server, cmd);
     } else {
         dprintf(out, "%% Invalid keyword after 'show': %s\n", token);
     }
@@ -218,6 +319,8 @@ bmp_command_process(bmp_server *server, int fd, int events)
     }
  
     buffer[rc] = 0;
+
+    gettimeofday(&now, NULL);
 
     bmp_command(server, cmd);
 

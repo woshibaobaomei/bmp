@@ -45,11 +45,13 @@ logged with a timestamp on the console as well.
 Usage
 =====
 
-    BMP# show bmp summary
+    BMP# show summary
+    
+     
 
 . 
 
-    BMP# show bmp clients
+    BMP# show clients
 
     ID    Address:Port            Uptime    Peers  Messages     Data
      1   1.1.1.1:12234          00:03:11     2300     10023    2.2MB
@@ -65,27 +67,35 @@ Usage
 
 .
 
-    show bmp client X
+    show client X
 
 .
 
-    show bmp client X messages
+    show client X messages
 
 .
 
-    show bmp client X ....
+    show client X peers
 
 .
 
-    clear bmp client X
+    show client X peer Y
 
 .
 
-    debug bmp client X
+    show client X peer Y messages
 
 .
 
-    flush bmp client X
+    clear client X
+
+.
+
+    debug client X
+
+.
+
+    flush client X
 
 .
 

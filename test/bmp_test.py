@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import socket
 
 ###############################################################################
 
@@ -8,7 +9,7 @@ def byte (b):
     if b > 0xFF:
         raise Exception, 'byte value > 0xFF';
     #end if
-    sys.stdout.write(('\\x%02d' % b).decode('string_escape'));
+    sys.stdout.write(('\\x%02x' % b).decode('string_escape'));
 #end def
 
 def word (w):
@@ -34,6 +35,22 @@ def qword (qw):
     dword((qw & 0xFFFFFFFF00000000) >> 32)
     dword((qw & 0x00000000FFFFFFFF) >> 00)
 #end def
+
+def ipbytes (ip, pad):
+    try: # IPv4
+        addr = socket.inet_pton(socket.AF_INET, ip)
+        if pad: 
+            for i in xrange(0,12): byte(0)
+        #endif
+    except socket.error:
+        try: # IPv6
+            addr = socket.inet_pton(socket.AF_INET6, ip)
+        except socket.error:
+            raise Exception, "invalid address [%s]" % ip
+        #end try IPv6
+    #end try IPv4
+    for b in addr: byte(ord(b))
+#end def
  
 ############################################################################### 
  
@@ -44,18 +61,17 @@ def bmp_header (version, length, type):
     return 6
 #end def
 
-def bmp_peer_header (type, flags, distinguisher, address, asn, id, sec, msec):
+def bmp_peer_header (type, flags, rd, ip, asn, id, sec, msec):
     byte(type)
     byte(flags)
-    # distinguisher
-    # address
+    qword(rd)
+    ipbytes(ip)
     dword(asn)
     dword(id)
     dword(sec)
     dword(msec)
     return 42
 #end def
-
 
 def bmp_initiation_message (length):
     hlen = bmp_header(0, length, 4)
@@ -64,7 +80,6 @@ def bmp_initiation_message (length):
     #end for
 #end def
 
-
 def bmp_termination_message (length):
     hlen = bmp_header(0, length, 5)
     for i in xrange(hlen, length):
@@ -72,14 +87,16 @@ def bmp_termination_message (length):
     #end for
 #end def
 
-
 def bmp_peer_up_message (length):
     hlen = bmp_header(0, length, 3)
     plen = bmp_peer_header(0, 0, 0, 0, 0, 0, 0, 0)
-
     for i in xrange(hlen+plen, length):
         byte(0)
     #end for
 #end def
+
+###############################################################################
+
+ipbytes('1.2.3.274', 1)
 
 

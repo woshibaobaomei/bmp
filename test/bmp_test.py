@@ -29,7 +29,7 @@ def dword (dw):
 #end def
 
 def qword (qw):
-    if dw > 0xFFFFFFFFFFFFFFFF:
+    if qw > 0xFFFFFFFFFFFFFFFF:
         raise Exception, 'qword value > 0xFFFFFFFFFFFFFFFF'
     #end if
     dword((qw & 0xFFFFFFFF00000000) >> 32)
@@ -97,6 +97,7 @@ def bmp_peer_up_message (length):
 
 ###############################################################################
 
-ipbytes('1.2.3.274', 1)
+qword(0xaabbccddeeff0011)
+ipbytes('1.2.3.4', 1)
 
 

@@ -66,14 +66,14 @@ typedef struct bmp_peer_hdr_ {
 } bmp_peer_hdr;
 
 
-typedef struct bmp_init_hdr_ {
+typedef struct bmp_initiation_msg_ {
     
-} bmp_init_hdr;
+} bmp_initiation_msg;
 
 
-typedef struct bmp_term_hdr_ {
+typedef struct bmp_termination_msg_ {
 
-} bmp_term_hdr;
+} bmp_termination_msg;
 
 
 /*
@@ -91,12 +91,12 @@ typedef struct bmp_term_hdr_ {
  *   ~                                                               ~
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-typedef struct bmp_peer_up_hdr_ {
+typedef struct bmp_peer_up_msg_ {
     uint8_t  laddr[16];
     uint16_t lport;
     uint16_t fport;
     uint8_t  open_msg[0];
-} bmp_peer_up_hdr;
+} bmp_peer_up_msg;
 
 
 /*
@@ -108,10 +108,10 @@ typedef struct bmp_peer_up_hdr_ {
  *   ~                                                               ~
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-typedef struct bmp_peer_down_hdr_ {
+typedef struct bmp_peer_down_msg_ {
     uint8_t reason;
     uint8_t data[0];
-} bmp_peer_down_hdr;
+} bmp_peer_down_msg;
 
 
 char *

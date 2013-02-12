@@ -218,9 +218,9 @@ int
 uptime_string(int s, char *buf, int len)
 {
     if (s < 86400) { // 01:20:23
-        snprintf(buf, len, "%02d:%02d:%02d", s/3600, s/60, s % 60);
+        snprintf(buf, len, "%02d:%02d:%02d", s/3600, s/60 % 60, s % 60);
     } else if (s >= 86400) { // 2d 10h 2m
-        snprintf(buf, len, "%dd %dh %dm", s/86400, s/3600, s/60);
+        snprintf(buf, len, "%dd %dh %dm", s/86400, s/3600 % 24, s/60 % 60);
     }
 
     return s;

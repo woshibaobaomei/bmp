@@ -65,7 +65,7 @@ def bmp_peer_header (type, flags, rd, ip, asn, id, sec, msec):
     byte(type)
     byte(flags)
     qword(rd)
-    ipbytes(ip)
+    ipbytes(ip, 1)
     dword(asn)
     dword(id)
     dword(sec)

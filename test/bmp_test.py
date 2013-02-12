@@ -1,6 +1,11 @@
 #!/usr/bin/python
 
-import '../lib/nf/nf.py'
+import sys
+import os
+
+sys.path.append(os.getcwd()+os.sep+'lib')
+
+from nf import nf
 
 ############################################################################### 
 

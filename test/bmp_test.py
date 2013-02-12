@@ -3,9 +3,9 @@
 import sys
 import os
 
-sys.path.append(os.getcwd()+os.sep+'lib')
+sys.path.append(os.getcwd()+'/lib/nf')
 
-from nf import nf
+import nf
 
 ############################################################################### 
 

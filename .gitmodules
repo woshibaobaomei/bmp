@@ -1,6 +1,3 @@
 [submodule "lib/avl"]
 	path = lib/avl
 	url = https://github.com/forhadahmed/avl.git
-[submodule "lib/nf"]
-	path = lib/nf
-	url = https://github.com/forhadahmed/nf.git

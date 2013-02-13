@@ -7,6 +7,29 @@ sys.path.append(os.getcwd()+'/lib/nf')
 import nf
 
 
+###############################################################################
+
+
+def bgp_header (type):
+    nf.word(0xffffffff)
+    nf.word(0xffffffff)
+    nf.word(0xffffffff)
+    nf.word(0xffffffff)
+    nf.length(2)
+    nf.byte(type)
+#end def
+
+
+def bgp_dummy_update_message():
+    nf.start()
+    bgp_header(2)
+    nf.word(0)     # Unfeasible routes length
+    nf.word(64)    # Total path attribute length
+    nf.pad(64)     # Path attributes
+    nf.end()
+#end def
+
+
 ############################################################################### 
 
 

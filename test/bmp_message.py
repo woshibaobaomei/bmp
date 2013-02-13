@@ -52,11 +52,14 @@ def bmp_peer_header (ip, rd, asn, id, sec, msec):
 #end def
 
 
+###############################################################################
+
+
 def bmp_initiation_message ():
 
     nf.start()
 
-    hlen = bmp_header(4)
+    bmp_header(4)
 
     nf.end()
 
@@ -67,7 +70,7 @@ def bmp_termination_message ():
 
     nf.start()
 
-    hlen = bmp_header(5)
+    bmp_header(5)
 
     nf.end()
 
@@ -81,7 +84,6 @@ def bmp_peer_up_message (ip, rd, asn, id):
     bmp_header(3)
     bmp_peer_header(ip, rd, asn, id, 0, 0)
 
-    
     nf.end()
 
 #end def
@@ -91,8 +93,8 @@ def bmp_peer_down_message (ip, rd, asn, id):
 
     nf.start()
 
-    hlen = bmp_header(2)
-    plen = bmp_peer_header(ip, rd, asn, id, 0, 0)
+    bmp_header(2)
+    bmp_peer_header(ip, rd, asn, id, 0, 0)
 
     nf.end()
 
@@ -103,9 +105,8 @@ def bmp_route_monitoring_message (ip, rd, asn, id, pdu):
 
     nf.start()
 
-    hlen = bmp_header(0)
-    plen = bmp_peer_header(0,0,0,0,0,0,0,0)
-
+    bmp_header(0)
+    bmp_peer_header(ip, rd, asn, id, 0, 0)
 
     nf.end()
 

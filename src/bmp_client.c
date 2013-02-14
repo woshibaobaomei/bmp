@@ -71,7 +71,7 @@ bmp_client_read(bmp_server *server, bmp_client *client)
     while ((space = BMP_RDBUF_SPACE(client)) > 0) {
 
         rc = read(client->fd, client->rdptr, space);
-
+ 
         if (rc > 0) {
             
             server->bytes += rc; 
@@ -80,7 +80,7 @@ bmp_client_read(bmp_server *server, bmp_client *client)
          
         } else if (rc == 0) {
 
-            goto remote_close;
+            break;
  
         } else {
 

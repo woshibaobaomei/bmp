@@ -3,12 +3,27 @@
 
 #include <stdint.h>
 
+#define BMP_MSG_HDR_LEN        ( 6)
+#define BMP_MSG_HDR_INCOMPLETE (-1)
+#define BMP_MSG_HDR_ERROR      (-2)
+
+
 #define BMP_ROUTE_MONITORING       0
 #define BMP_STATISTICS_REPORT      1
 #define BMP_PEER_DOWN_NOTIFICATION 2
 #define BMP_PEER_UP_NOTIFICATION   3
 #define BMP_INITIATION_MESSAGE     4
 #define BMP_TERMINATION_MESSAGE    5
+
+
+#define BMP_MESSAGE_TYPE_STRING(t)                              \
+  (t == BMP_ROUTE_MONITORING       ? "Route Monitoring"       : \
+   t == BMP_STATISTICS_REPORT      ? "Statistics Report"      : \
+   t == BMP_PEER_DOWN_NOTIFICATION ? "Peer Down Notification" : \
+   t == BMP_PEER_UP_NOTIFICATION   ? "Peer Up Notification"   : \
+   t == BMP_INITIATION_MESSAGE     ? "Initiation Message"     : \
+   t == BMP_TERMINATION_MESSAGE    ? "Termination Message"    : \
+                                     "Unknown")                 \
 
 
 #define BMP_PEER_TYPE_GLOBAL 0
@@ -32,6 +47,7 @@ typedef struct bmp_msg_hdr_ {
     uint8_t length[4];
     uint8_t type;
 } bmp_msg_hdr;
+
 
 
 /*

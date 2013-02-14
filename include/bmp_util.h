@@ -7,6 +7,9 @@
 
 extern char *space[];
 
+#define GETLONG(b)  ntohl(*((uint32_t*)(b)))
+#define GETSHORT(b) ntohs(*((uint16_t*)(b)))
+
 #define NEXT_TOKEN(cmd, tok)     \
 do {                             \
     char *tmp = cmd;             \

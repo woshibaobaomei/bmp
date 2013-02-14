@@ -57,8 +57,8 @@ bmp_show_clients_walker(void *node, void *ctx)
     bytes_string(client->bytes, bs, sizeof(bs));
 
     if (id == 1) 
-    dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs      Data\n");
-    dprintf(out, "%3d    %s%s"                      "%s%s"         "%s%s"    "%s%s"    "%s  \n", 
+    dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs       Data\n");
+    dprintf(out, "%3d    %s%s"                      "%s%s"         "%s%s"    "%s%s"     "%s  \n", 
             id, 
             as, 
             space[26-strlen(as)], 
@@ -67,7 +67,7 @@ bmp_show_clients_walker(void *node, void *ctx)
             pe,
             space[9-strlen(pe)],
             ms,
-            space[9-strlen(ms)], 
+            space[10-strlen(ms)], 
             bs);
  
     return AVL_SUCCESS;

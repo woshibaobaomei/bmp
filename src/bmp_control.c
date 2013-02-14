@@ -28,7 +28,7 @@ bmp_control_server_connect(int port)
     rc = connect(fd, (struct sockaddr *) &saddr, sizeof(struct sockaddr_un));
 
     if (rc < 0) {
-        fprintf(stderr, "%% Could not connect to BMP server running on port: %d\n", port);
+        fprintf(stdout, "%% Could not connect to BMP server running on port: %d\n", port);
         return -1;
     }
 

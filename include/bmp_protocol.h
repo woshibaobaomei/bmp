@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#define BMP_MSG_HDR_LEN        ( 6)
-#define BMP_MSG_HDR_INCOMPLETE (-1)
-#define BMP_MSG_HDR_ERROR      (-2)
+#define BMP_MSG_HDR_LEN   ( 6)
+#define BMP_MSG_HDR_WAIT  (-1)
+#define BMP_MSG_HDR_ERROR (-2)
 
 
 #define BMP_ROUTE_MONITORING       0
@@ -44,7 +44,7 @@
  */
 typedef struct bmp_msg_hdr_ {
     uint8_t version;
-    uint8_t length[4];
+    uint32_t length;
     uint8_t type;
 } bmp_msg_hdr;
 
@@ -108,10 +108,12 @@ typedef struct bmp_termination_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_up_msg_ {
-    uint8_t laddr[16];
-    uint8_t lport[2];
-    uint8_t fport[2];
-    uint8_t open_msg[0];
+    bmp_msg_hdr  hdr;
+    bmp_peer_hdr peer;
+    uint8_t      laddr[16];
+    uint8_t      lport[2];
+    uint8_t      fport[2];
+    uint8_t      open_msg[0];
 } bmp_peer_up_msg;
 
 
@@ -125,12 +127,14 @@ typedef struct bmp_peer_up_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_down_msg_ {
-    uint8_t reason;
-    uint8_t data[0];
+    bmp_msg_hdr  hdr;
+    bmp_peer_hdr peer;
+    uint8_t      reason;
+    uint8_t      data[0];
 } bmp_peer_down_msg;
 
 
 char *
-bmp_protocol_read(bmp_server *server,bmp_client *client,char *data,char *end);
+bmp_protocol_read(bmp_client *client, char *data, char *end);
 
 #endif

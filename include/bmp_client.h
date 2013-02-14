@@ -35,15 +35,16 @@ struct bmp_client_ {
     /*
      *
      */
-    bmp_sockaddr    addr;
-    uint16_t        port;
-    struct timeval  time;
-    uint32_t        flags;
-    uint64_t        bytes;
-    uint64_t        msgs;    
-    bmp_message    *head;
-    bmp_message    *tail;
-    avl_tree       *peers;
+    bmp_sockaddr        addr;
+    uint16_t            port;
+    struct timeval      time;
+    uint32_t            flags;
+    uint64_t            bytes;
+    uint64_t            msgs;    
+    bmp_message        *head;
+    bmp_message        *tail;
+    avl_tree           *peers;
+    struct bmp_server_ *server;
 };
 
  
@@ -68,8 +69,8 @@ struct bmp_message_ {
 
 
 int bmp_client_create(struct bmp_server_ *server, int fd, struct sockaddr *addr, socklen_t slen);
-int bmp_client_process(struct bmp_server_ *server, bmp_client *client, int events);
-int bmp_client_close(struct bmp_server_ *server, bmp_client *client, int reason);
+int bmp_client_process(bmp_client *client, int events);
+int bmp_client_close(bmp_client *client, int reason);
 int bmp_client_fd_compare(void *a, void *b, void *c);
 int bmp_client_addr_compare(void *a, void *b, void *c);
 

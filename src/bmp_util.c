@@ -47,7 +47,7 @@ char *space[] = {
 int 
 bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
 {
-    int port;
+    int port = 0;
 
     switch (a->af) {
     case AF_INET:

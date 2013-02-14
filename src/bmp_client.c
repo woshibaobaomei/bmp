@@ -39,12 +39,12 @@ bmp_client_cleanup(bmp_client *client)
 
 
 int
-bmp_client_close(bmp_server *server, bmp_client *client, int reason)
+bmp_client_close(bmp_client *client, int reason)
 {
     assert(client != NULL);
     assert(client->fd != 0);
 
-    avl_multi_remove(server->clients, client, NULL);
+    avl_multi_remove(client->server->clients, client, NULL);
 
     bmp_log("BMP-ADJCHANGE: %s:%d Down (%s)", client->name, client->port,
              BMP_CLIENT_CLOSE_REASON(reason));
@@ -59,9 +59,9 @@ bmp_client_close(bmp_server *server, bmp_client *client, int reason)
 
 
 static int
-bmp_client_read(bmp_server *server, bmp_client *client)
+bmp_client_read(bmp_client *client)
 {
-    int rc = 1, space;
+    int rc = 1, error = 0, space;
     char *pread;
 
     assert(client->fd != 0);
@@ -71,23 +71,15 @@ bmp_client_read(bmp_server *server, bmp_client *client)
     while ((space = BMP_RDBUF_SPACE(client)) > 0) {
 
         rc = read(client->fd, client->rdptr, space);
- 
-        if (rc > 0) {
-            
-            server->bytes += rc; 
-            client->bytes += rc;           
-            client->rdptr += rc;
-         
-        } else if (rc == 0) {
 
-            break;
- 
-        } else {
-
-            if (errno != EAGAIN) goto read_error;
-            
+        if (rc <= 0) {
+            error = errno;
             break;
         }
+            
+        client->server->bytes += rc; 
+        client->bytes += rc;           
+        client->rdptr += rc;
     }    
 
     if (client->rdptr - client->rdbuf > 0) {
@@ -96,7 +88,7 @@ bmp_client_read(bmp_server *server, bmp_client *client)
          * consume the read buffer upto the last full PDU, leaving behind a 
          * partial PDU if any bytes should remain
          */
-        pread = bmp_protocol_read(server,client,client->rdbuf,client->rdptr);
+        pread = bmp_protocol_read(client, client->rdbuf, client->rdptr);
         
         /*
          * If the protocol parsing detects an error, it will return NULL
@@ -107,12 +99,16 @@ bmp_client_read(bmp_server *server, bmp_client *client)
          * Protocol should *not* read past the end of the read buffer
          */
         assert(pread <= client->rdptr);
+
+        /* 
+         * If pread == client->rdbuf for too many iterations, we have an issue
+         */
         
         /*
          * Copy the fragment PDU to the head of the read buffer. The protocol
          * read always happens from the head of the read buffer
          */
-        if (pread < client->rdptr) {
+        if (pread < client->rdptr && pread != client->rdbuf) {
             memcpy(client->rdbuf, pread, client->rdptr - pread);
         }
         
@@ -121,28 +117,26 @@ bmp_client_read(bmp_server *server, bmp_client *client)
     
     }
 
-    return rc;
-
-remote_close:
-
-    bmp_client_close(server, client, BMP_CLIENT_REMOTE_CLOSE);
-    return rc;  
-
-read_error:
-
-    bmp_client_close(server, client, BMP_CLIENT_READ_ERROR);
+    if (rc == 0) {
+        bmp_client_close(client, BMP_CLIENT_REMOTE_CLOSE); 
+    }
+    
+    if (rc < 0 && error != EAGAIN) {
+        bmp_client_close(client, BMP_CLIENT_READ_ERROR);
+    }
+    
     return rc;         
 }
 
 
 int
-bmp_client_process(bmp_server *server, bmp_client *client, int events)
+bmp_client_process(bmp_client *client, int events)
 {
     int rc = 0;
 
     assert(client != NULL);
 
-    rc = bmp_client_read(server, client);
+    rc = bmp_client_read(client);
 
     return rc;
 }
@@ -177,6 +171,7 @@ bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t s
         return -1;
     } 
 
+    client->server = server;
     client->fd = fd;
     client->rdptr = client->rdbuf;
     client->peers = avl_init(bmp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
@@ -202,7 +197,7 @@ bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t s
  
     if (rc < 0) {
         bmp_log("epoll_ctl(EPOLL_CTL_ADD, %d) failed: %s", fd, strerror(errno));
-        bmp_client_close(server, client, BMP_CLIENT_LISTEN_ERROR);
+        bmp_client_close(client, BMP_CLIENT_LISTEN_ERROR);
     }
 
     return rc;

@@ -199,7 +199,7 @@ bmp_server_run(bmp_server *server, int timer)
             client = (bmp_client*) avl_lookup(server->clients, &search, 0);
 
             if (client) { // handle client event
-                bmp_client_process(server, client, e);
+                bmp_client_process(client, e);
                 continue;
             }
  
@@ -248,7 +248,7 @@ bmp_server_exit(int signo)
 int
 main(int argc, char *argv[])
 {
-    int rc = 0, timer;
+    int rc = 0, timer = 0;
     int interactive = 1;
 
     signal(SIGPIPE, SIG_IGN);

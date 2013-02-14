@@ -4,23 +4,26 @@
 #include "bmp_protocol.h"
 
 
-static int
+static uint8_t
 bmp_recv_msg_hdr(bmp_server *server, bmp_client *client, char *data, int len)
 {
-
-    return 0;
+    bmp_msg_hdr *hdr = (bmp_msg_hdr*)data;
+    return hdr->type;
 }
 
 
 static int
 bmp_recv_msg(bmp_server *server, bmp_client *client, char *data, int len)
 {
-    int type;
+    uint8_t type;
 
     type = bmp_recv_msg_hdr(server, client, data, len);
 
+    bmp_log("[%d:%d] message from %s", type, len, client->name);
+
     switch (type) {
     case 0:
+        
     case 1:
     default:
         break;

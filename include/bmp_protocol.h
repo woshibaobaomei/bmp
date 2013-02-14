@@ -28,9 +28,9 @@
  *   +---------------+
  */
 typedef struct bmp_msg_hdr_ {
-    uint8_t  version;
-    uint32_t length;
-    uint8_t  type;
+    uint8_t version;
+    uint8_t length[4];
+    uint8_t type;
 } bmp_msg_hdr;
 
 
@@ -55,14 +55,14 @@ typedef struct bmp_msg_hdr_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_hdr_ {
-    uint8_t  type;
-    uint8_t  flags;
-    uint64_t distinguisher;
-    uint8_t  addr[16];
-    uint32_t asn;
-    uint32_t id;
-    uint32_t tv_sec;
-    uint32_t tv_msec;
+    uint8_t type;
+    uint8_t flags;
+    uint8_t distinguisher;
+    uint8_t addr[16];
+    uint8_t asn[4];
+    uint8_t id[4];
+    uint8_t tv_sec[4];
+    uint8_t tv_msec[4];
 } bmp_peer_hdr;
 
 
@@ -92,10 +92,10 @@ typedef struct bmp_termination_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_up_msg_ {
-    uint8_t  laddr[16];
-    uint16_t lport;
-    uint16_t fport;
-    uint8_t  open_msg[0];
+    uint8_t laddr[16];
+    uint8_t lport[2];
+    uint8_t fport[2];
+    uint8_t open_msg[0];
 } bmp_peer_up_msg;
 
 

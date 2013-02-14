@@ -17,4 +17,3 @@ bmp_route_monitoring_message('1.1.1.1', 0, 100, 0, bgp_dummy_update_message(10, 
 bmp_peer_down_message('3.1.1.1', 0, 300, 0)
 
 
-nf.sleep(0.1)

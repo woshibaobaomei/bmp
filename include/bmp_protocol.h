@@ -3,11 +3,6 @@
 
 #include <stdint.h>
 
-#define BMP_MSG_HDR_LEN   ( 6)
-#define BMP_MSG_HDR_WAIT  (-1)
-#define BMP_MSG_HDR_ERROR (-2)
-
-
 #define BMP_ROUTE_MONITORING       0
 #define BMP_STATISTICS_REPORT      1
 #define BMP_PEER_DOWN_NOTIFICATION 2
@@ -43,11 +38,10 @@
  *   +---------------+
  */
 typedef struct bmp_msg_hdr_ {
-    uint8_t version;
+    uint8_t  version;
     uint32_t length;
-    uint8_t type;
+    uint8_t  type;
 } bmp_msg_hdr;
-
 
 
 /*
@@ -71,14 +65,15 @@ typedef struct bmp_msg_hdr_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_hdr_ {
-    uint8_t type;
-    uint8_t flags;
-    uint8_t distinguisher;
-    uint8_t addr[16];
-    uint8_t asn[4];
-    uint8_t id[4];
-    uint8_t tv_sec[4];
-    uint8_t tv_msec[4];
+    bmp_msg_hdr hdr;
+    uint8_t     type;
+    uint8_t     flags;
+    uint8_t     rd[8];
+    uint8_t     addr[16];
+    uint32_t    asn;
+    uint32_t    id;
+    uint32_t    tv_sec;
+    uint32_t    tv_msec;
 } bmp_peer_hdr;
 
 
@@ -108,11 +103,10 @@ typedef struct bmp_termination_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_up_msg_ {
-    bmp_msg_hdr  hdr;
     bmp_peer_hdr peer;
     uint8_t      laddr[16];
-    uint8_t      lport[2];
-    uint8_t      fport[2];
+    uint16_t     lport;
+    uint16_t     fport;
     uint8_t      open_msg[0];
 } bmp_peer_up_msg;
 
@@ -127,14 +121,28 @@ typedef struct bmp_peer_up_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_down_msg_ {
-    bmp_msg_hdr  hdr;
     bmp_peer_hdr peer;
     uint8_t      reason;
     uint8_t      data[0];
 } bmp_peer_down_msg;
 
 
+//-----------------------------------------------------------------------------
+
+#define BMP_MSG_HDR_LEN   ( 6)
+#define BMP_MSG_HDR_WAIT  (-1)
+#define BMP_MSG_HDR_ERROR (-2)
+
+#define BMP_INVALID_MSG_VERSION
+#define BMP_INVALID_MSG_LENGTH
+#define BMP_INVALID_MSG_TYPE
+
+
+
+//-----------------------------------------------------------------------------
+
 char *
 bmp_protocol_read(bmp_client *client, char *data, char *end);
 
 #endif
+

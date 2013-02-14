@@ -39,7 +39,7 @@ int so_reuseaddr(int fd);
 
 int bmp_log(const char *fmt, ...);
 int bmp_prompt();
-int bytes_string(uint64_t bytes, char *buf, int len);
+int size_string(uint64_t size, char *buf, int len, int bytes);
 int uptime_string(int s, char *buf, int len);
 
 #endif

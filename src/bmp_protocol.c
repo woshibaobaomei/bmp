@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <assert.h>
+#include "bmp_peer.h"
 #include "bmp_client.h"
 #include "bmp_server.h"
 #include "bmp_protocol.h"
@@ -16,9 +17,27 @@ bmp_protocol_error(bmp_client *client)
 }
 
 
+static bmp_peer *
+bmp_recv_peer_hdr(bmp_client *client, char *data, int len)
+{
+    bmp_peer *peer, search;
+    bmp_peer_hdr *peer_hdr = (bmp_peer_hdr *)data;
+    search.hdr = peer_hdr;
+
+    peer = (bmp_peer *)avl_lookup(client->peers, &search, NULL);
+
+    return peer;
+}
+
+
 static int 
 bmp_recv_route_monitoring(bmp_client *client, char *data, int len)
 {
+    bmp_peer *peer = bmp_recv_peer_hdr(client, data, len);
+
+    if (peer == NULL) {
+        
+    }
 
     return len;
 }
@@ -35,6 +54,12 @@ bmp_recv_statistics_report(bmp_client *client, char *data, int len)
 static int
 bmp_recv_peer_up_notification(bmp_client *client, char *data, int len)
 {
+    bmp_peer *peer = bmp_recv_peer_hdr(client, data, len);
+
+    if (peer == NULL) {
+
+    }
+
 
     return len;
 }
@@ -43,6 +68,11 @@ bmp_recv_peer_up_notification(bmp_client *client, char *data, int len)
 static int 
 bmp_recv_peer_down_notification(bmp_client *client, char *data, int len)
 {
+    bmp_peer *peer = bmp_recv_peer_hdr(client, data, len);
+
+    if (peer == NULL) {
+
+    }
 
     return len;
 }
@@ -111,6 +141,7 @@ bmp_recv_msg(bmp_client *client, char *data, int len)
         assert(0);
     }
 
+    client->server->msgs++;
     client->msgs++;
 
     switch (hdr) {

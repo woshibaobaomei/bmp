@@ -21,15 +21,17 @@ static int
 bmp_show_summary(bmp_server *server, char *cmd)
 {
     char bs[32];
+    char ms[32];
 
     dprintf(out, "\n");
     dprintf(out, "Listening on port  : %d\n", server->port);
     dprintf(out, "Active BGP clients : %d\n", avl_size(server->clients));
     dprintf(out, "Active BGP peers   : %d\n", 0);
-    dprintf(out, "BMP messages rcvd  : %d\n", 0);
-    bytes_string(server->bytes, bs, sizeof(bs));
+    size_string(server->msgs, ms, sizeof(ms), 0);
+    dprintf(out, "BMP messages rcvd  : %s\n", ms);
+    size_string(server->bytes, bs, sizeof(bs), 1);
     dprintf(out, "Total data rcvd    : %s\n", bs);
-    bytes_string(server->memory, bs, sizeof(bs));
+    size_string(server->memory, bs, sizeof(bs), 1);
     dprintf(out, "Total memory usage : %s\n", bs);       
 
     dprintf(out, "\n");
@@ -54,7 +56,7 @@ bmp_show_clients_walker(void *node, void *ctx)
     uptime_string(now.tv_sec - client->time.tv_sec, up, sizeof(up));
     snprintf(pe, sizeof(pe), "%d", avl_size(client->peers));
     snprintf(ms, sizeof(ms), "%llu", client->msgs);
-    bytes_string(client->bytes, bs, sizeof(bs));
+    size_string(client->bytes, bs, sizeof(bs), 1);
 
     if (id == 1) 
     dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs       Data\n");

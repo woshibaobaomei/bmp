@@ -194,20 +194,21 @@ so_reuseaddr(int fd)
 
 
 int
-bytes_string(uint64_t bytes, char *buf, int len) 
+size_string(uint64_t size, char *buf, int len, int bytes) 
 {
     int rc = 0;
+    char byte = bytes ? 'B' : ' ';
 
-    if (bytes < 1<<10) { // B
-        rc = snprintf(buf, len, "%llu B", bytes);
-    } else if (bytes >= 1<<10 && bytes < 1<<20 ) { // KB
-        rc = snprintf(buf, len, "%03.2f KB", (float)bytes/(float)(1<<10));
-    } else if (bytes >= 1<<20 && bytes < 1<<30 ) { // MB
-        rc = snprintf(buf, len, "%03.2f MB", (float)bytes/(float)(1<<20));
-    } else if (bytes >= 1<<30 && bytes < 1LLU<<40) { // GB
-        rc = snprintf(buf, len, "%03.2f GB", (float)bytes/(float)(1<<30));
+    if (size < 1<<10) { // B
+        rc = snprintf(buf, len, "%llu %c", size, byte);
+    } else if (size >= 1<<10 && size < 1<<20 ) { // KB
+        rc = snprintf(buf, len, "%03.2f K%c", (float)size/(float)(1<<10), byte);
+    } else if (size >= 1<<20 && size < 1<<30 ) { // MB
+        rc = snprintf(buf, len, "%03.2f M%c", (float)size/(float)(1<<20), byte);
+    } else if (size >= 1<<30 && size < 1LLU<<40) { // GB
+        rc = snprintf(buf, len, "%03.2f %s%c", (float)size/(float)(1<<30), bytes ? "G" : "B" , byte);
     } else { // TB
-        rc = snprintf(buf, len, "%03.2f TB", (float)bytes/(float)(1LLU<<40));
+        rc = snprintf(buf, len, "%03.2f T%c", (float)size/(float)(1LLU<<40), byte);
     }
 
     return rc;

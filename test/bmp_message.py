@@ -11,22 +11,24 @@ import nf
 
 
 def bgp_header (type):
-    nf.word(0xffffffff)
-    nf.word(0xffffffff)
-    nf.word(0xffffffff)
-    nf.word(0xffffffff)
+    nf.dword(0xffffffff)
+    nf.dword(0xffffffff)
+    nf.dword(0xffffffff)
+    nf.dword(0xffffffff)
     nf.length(2)
     nf.byte(type)
 #end def
 
 
-def bgp_dummy_update_message():
+def bgp_dummy_update_message(wdr, attr, nlri):
     nf.start()
     bgp_header(2)
-    nf.word(0)     # Unfeasible routes length
-    nf.word(64)    # Total path attribute length
-    nf.pad(64)     # Path attributes
-    nf.end()
+    nf.word(wdr)     # Unfeasible routes length
+    nf.pad(wdr)      # Unfeasible routes
+    nf.word(attr)    # Path attribute length
+    nf.pad(attr)     # Path attributes
+    nf.pad(nlri)     # NLRI
+    return nf.end(1) # End the block without writing anything
 #end def
 
 
@@ -131,6 +133,8 @@ def bmp_route_monitoring_message (ip, rd, asn, id, pdu):
     bmp_header(0)
     bmp_peer_header(ip, rd, asn, id, 0, 0)
 
+    nf.data(pdu)
+    
     nf.end()
 
 #end def

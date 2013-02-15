@@ -130,6 +130,7 @@ typedef struct bmp_peer_down_msg_ {
 
 //-----------------------------------------------------------------------------
 
+#define BMP_MSG_MAX_LEN   (1<<14)
 #define BMP_MSG_HDR_LEN   ( 6)
 #define BMP_MSG_HDR_WAIT  (-1)
 #define BMP_MSG_HDR_ERROR (-2)

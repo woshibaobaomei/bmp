@@ -4,3 +4,4 @@
 - protocol code in server (bmp_protocol.c)
 - finalize on message saving scheme
 - introduce new thread to save messages
+- move non-interactive control-channel from unix-domain to tcp based socket (listen on server port + 1)

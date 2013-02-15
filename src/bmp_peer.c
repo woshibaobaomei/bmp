@@ -15,25 +15,30 @@
 int 
 bmp_peer_compare(void *a, void *b, void *c)
 {
+    int t = 0, v = 0;
     bmp_peer *A = (bmp_peer *)a;
     bmp_peer *B = (bmp_peer *)b;
 
     bmp_peer_hdr *h1 = A->hdr;
     bmp_peer_hdr *h2 = B->hdr;
 
-    if (h1->type != h2->type) {
-    
-    }
-    
-    // if type is 0 (global peer) no need to compare RDs
-
-    if ((h1->flags & BMP_PEER_FLAG_V) != (h2->flags & BMP_PEER_FLAG_V)) {
+    if ((t = h1->type) != h2->type) {
 
     }
+    
+    
 
-    // if flags indicate IPv4 peer, no need to do 16 byte memcmp
+    if ((v = (h1->flags & 0x01)) != (h2->flags & 0x01)) {
 
-    return memcmp(h1->addr+12, h2->addr+12, 4);
+    }
+
+    // if t is 0 (global peer) no need to compare RDs
+    // if v is 0 (IPv6 peer) no need to do 16 byte memcmp
+    if (t == 0) {
+
+    }
+
+    return memcmp(h1->addr+(v?0:12), h2->addr+(v?0:12), (v?16:4));
 }
 
 

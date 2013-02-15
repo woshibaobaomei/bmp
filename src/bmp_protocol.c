@@ -119,7 +119,7 @@ bmp_recv_msg_hdr(bmp_client *client, char *data, int *len)
     mlen = ntohl(hdr->length);
     type = hdr->type;
 
-    if (mlen < BMP_MSG_HDR_LEN) {
+    if (mlen < BMP_MSG_HDR_LEN || mlen > BMP_MSG_MAX_LEN) {
         bmp_protocol_error(client, BMP_INVALID_MSG_LENGTH);
         return BMP_MSG_HDR_ERROR;
     }

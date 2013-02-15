@@ -244,11 +244,13 @@ int
 main(int argc, char *argv[])
 {
     int rc = 0, timer = 0;
-    int interactive = 1;
+    int interactive = 0;
 
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT,  bmp_server_exit);
     signal(SIGTERM, bmp_server_exit);
+
+    rc = daemon(1,1);
 
     rc = bmp_server_init(&server, 1111);
 

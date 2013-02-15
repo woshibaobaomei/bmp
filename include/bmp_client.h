@@ -51,6 +51,7 @@ struct bmp_client_ {
 struct bmp_message_ {
     struct timeval time;
     bmp_message   *next;
+    bmp_message   *peer_next;
     unsigned char  data[0];
 };
 

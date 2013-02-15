@@ -12,6 +12,7 @@
 #include "bmp_control.h"
 #include "bmp_command.h"
 #include "bmp_server.h"
+#include "bmp_client.h"
 
 static int out;
 static struct timeval now;

@@ -23,8 +23,8 @@
 
 #define BMP_PEER_TYPE_GLOBAL 0
 #define BMP_PEER_TYPE_L3VPN  1
-#define BMP_PEER_FLAG_V      0x01
-#define BMP_PEER_FLAG_L      0x02
+#define BMP_PEER_FLAG_V      0x01  // IPv6
+#define BMP_PEER_FLAG_L      0x02  // Loc-RIB
 
 
 /*
@@ -65,7 +65,6 @@ typedef struct bmp_msg_hdr_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_hdr_ {
-    bmp_msg_hdr hdr;
     uint8_t     type;
     uint8_t     flags;
     uint8_t     rd[8];
@@ -103,6 +102,7 @@ typedef struct bmp_termination_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_up_msg_ {
+    bmp_msg_hdr  hdr;
     bmp_peer_hdr peer;
     uint8_t      laddr[16];
     uint16_t     lport;
@@ -121,6 +121,7 @@ typedef struct bmp_peer_up_msg_ {
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 typedef struct bmp_peer_down_msg_ {
+    bmp_msg_hdr  hdr;
     bmp_peer_hdr peer;
     uint8_t      reason;
     uint8_t      data[0];
@@ -133,9 +134,9 @@ typedef struct bmp_peer_down_msg_ {
 #define BMP_MSG_HDR_WAIT  (-1)
 #define BMP_MSG_HDR_ERROR (-2)
 
-#define BMP_INVALID_MSG_VERSION
-#define BMP_INVALID_MSG_LENGTH
-#define BMP_INVALID_MSG_TYPE
+#define BMP_INVALID_MSG_VERSION  0
+#define BMP_INVALID_MSG_LENGTH   1
+#define BMP_INVALID_MSG_TYPE     2
 
 
 

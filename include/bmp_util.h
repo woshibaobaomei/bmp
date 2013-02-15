@@ -30,8 +30,10 @@ typedef union bmp_sockaddr_ {
     struct sockaddr_in6 ipv6;
 } bmp_sockaddr;
 
+
 int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b);
 int bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len);
+void bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len);
 char *bmp_sockaddr_ip(bmp_sockaddr *a);
 
 int fd_nonblock(int fd);

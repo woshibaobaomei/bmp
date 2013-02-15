@@ -44,6 +44,22 @@ char *space[] = {
 };
 
 
+void
+bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len)
+{
+    switch (af) {
+    case AF_INET:
+        inet_ntop(AF_INET, a, buf, len);
+        break;
+    case AF_INET6:
+        inet_ntop(AF_INET6, a, buf, len);
+        break;
+    default:
+        break;
+    }
+}
+
+
 int 
 bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
 {

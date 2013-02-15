@@ -1,5 +1,8 @@
 #include <unistd.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h>
 #include "bmp_peer.h"
 #include "bmp_client.h"
 #include "bmp_server.h"
@@ -7,7 +10,7 @@
 
 
 static void
-bmp_protocol_error(bmp_client *client) 
+bmp_protocol_error(bmp_client *client, int error) 
 {
     /*
      * TODO: do some book-keeping here
@@ -25,6 +28,10 @@ bmp_recv_peer_hdr(bmp_client *client, char *data, int len)
     search.hdr = peer_hdr;
 
     peer = (bmp_peer *)avl_lookup(client->peers, &search, NULL);
+
+    if (peer != NULL) return peer;
+
+    peer = bmp_peer_create(client, peer_hdr);
 
     return peer;
 }
@@ -46,7 +53,11 @@ bmp_recv_route_monitoring(bmp_client *client, char *data, int len)
 static int 
 bmp_recv_statistics_report(bmp_client *client, char *data, int len)
 {
+    bmp_peer *peer = bmp_recv_peer_hdr(client, data, len);
 
+    if (peer == NULL) {
+        
+    }
     return len;
 }
 
@@ -109,7 +120,7 @@ bmp_recv_msg_hdr(bmp_client *client, char *data, int *len)
     type = hdr->type;
 
     if (mlen < BMP_MSG_HDR_LEN) {
-        bmp_protocol_error(client); // invalid msg len
+        bmp_protocol_error(client, BMP_INVALID_MSG_LENGTH);
         return BMP_MSG_HDR_ERROR;
     }
 
@@ -118,7 +129,7 @@ bmp_recv_msg_hdr(bmp_client *client, char *data, int *len)
     }
 
     if (vers != 3) {
-        bmp_protocol_error(client); // invalid msg version
+        bmp_protocol_error(client, BMP_INVALID_MSG_VERSION);
         return BMP_MSG_HDR_ERROR;
     }
 
@@ -144,6 +155,8 @@ bmp_recv_msg(bmp_client *client, char *data, int len)
     client->server->msgs++;
     client->msgs++;
 
+    data += BMP_MSG_HDR_LEN;
+
     switch (hdr) {
     case BMP_ROUTE_MONITORING:
         rc = bmp_recv_route_monitoring(client, data, len);        
@@ -164,6 +177,7 @@ bmp_recv_msg(bmp_client *client, char *data, int len)
         rc = bmp_recv_termination_message(client, data, len);
         break;
     default:
+        // TODO: warning about invalid message type
         rc = -1;
         break;
     }

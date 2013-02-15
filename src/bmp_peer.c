@@ -8,13 +8,32 @@
 #include "bmp_protocol.h"
 
 
+/*
+ * Compare two bmp_peer structs for avl lookup. This needs to be optimized 
+ * since there is a lookup for every client message that has a peer header  
+ */
 int 
 bmp_peer_compare(void *a, void *b, void *c)
 {
     bmp_peer *A = (bmp_peer *)a;
     bmp_peer *B = (bmp_peer *)b;
 
-    return memcmp(A->hdr, B->hdr, BMP_PEER_HDR_COMP_LEN);
+    bmp_peer_hdr *h1 = A->hdr;
+    bmp_peer_hdr *h2 = B->hdr;
+
+    if (h1->type != h2->type) {
+    
+    }
+    
+    // if type is 0 (global peer) no need to compare RDs
+
+    if ((h1->flags & BMP_PEER_FLAG_V) != (h2->flags & BMP_PEER_FLAG_V)) {
+
+    }
+
+    // if flags indicate IPv4 peer, no need to do 16 byte memcmp
+
+    return memcmp(h1->addr+12, h2->addr+12, 4);
 }
 
 

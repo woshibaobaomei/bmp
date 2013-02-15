@@ -70,7 +70,7 @@ struct bmp_message_ {
 
 
 int bmp_client_create(struct bmp_server_ *server, int fd, struct sockaddr *addr, socklen_t slen);
-int bmp_client_process(bmp_client *client, int events);
+int bmp_client_process(struct bmp_server_* server, int fd, int events);
 int bmp_client_close(bmp_client *client, int reason);
 int bmp_client_fd_compare(void *a, void *b, void *c);
 int bmp_client_addr_compare(void *a, void *b, void *c);

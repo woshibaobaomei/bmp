@@ -130,9 +130,13 @@ bmp_client_read(bmp_client *client)
 
 
 int
-bmp_client_process(bmp_client *client, int events)
+bmp_client_process(bmp_server *server, int fd, int events)
 {
     int rc = 0;
+    bmp_client *client, search;
+
+    search.fd = fd;
+    client = (bmp_client*)avl_lookup(server->clients, &search, NULL);
 
     assert(client != NULL);
 

@@ -164,7 +164,6 @@ int
 bmp_server_run(bmp_server *server, int timer)
 {
     int i, e, n, fd;
-    bmp_client search, *client = NULL;
 
     bmp_log("Listening on port: %d", server->port);
  
@@ -195,14 +194,6 @@ bmp_server_run(bmp_server *server, int timer)
                 continue;
             } 
 
-            search.fd = fd;
-            client = (bmp_client*) avl_lookup(server->clients, &search, 0);
-
-            if (client) { // handle client event
-                bmp_client_process(client, e);
-                continue;
-            }
- 
             if (fd == server->fd) { // server's listen socket - accept clients
 
                 bmp_accept_clients(server, e);
@@ -211,13 +202,17 @@ bmp_server_run(bmp_server *server, int timer)
 
                 bmp_command_process(server, fd, e);
 
-            } else if (fd == server->ctl) {
+            } else if (fd == server->ctl) { // process commands
 
                 bmp_command_process(server, fd, e);
 
             } else if (fd == timer) { // periodic timer
 
                 bmp_timer_process(server, timer);
+
+            } else { // process client events
+
+                bmp_client_process(server, fd, e);
 
             }
         }

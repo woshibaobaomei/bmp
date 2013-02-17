@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "bmp_util.h"
 #include "bmp_timer.h"
@@ -40,16 +41,33 @@ int main(int argc, char *argv[])
     int rc = 0;
     int mode = BMP_SERVER;
     int interactive = 0;
-    int port = 1111;
+    int port = 0;
     int timer;
 
     while ((opt = bmp_getopt(argc, argv, &optindex)) != NULL) {
+
         if (strcmp(opt, "p") == 0 || strcmp(opt, "s") == 0 || strcmp(opt, "port") == 0) {
+
             mode = BMP_SERVER;
+
+            if (bmp_optarg == NULL) {
+                fprintf(stderr, "%% Port number expected after '-%s'\n", opt);
+                return -1;
+            }
+
+            if (sscanf(bmp_optarg, "%d", &port) <= 0) {
+                fprintf(stderr, "%% Port number format error after '-%s'\n", opt);
+                return -1;
+            }
+
         } else if (strcmp(opt, "i") == 0 || strcmp(opt, "interactive") == 0) {
+
             interactive = 1;
+
         } else if (strcmp(opt, "h") == 0 || strcmp(opt, "help") == 0) {
+
             mode = BMP_HELP;
+
         }
     }
 
@@ -57,11 +75,13 @@ int main(int argc, char *argv[])
         mode = BMP_CONTROL;
     }
 
+    // Help
     if (argc == 1 || mode == BMP_HELP) {
         print_help();
         return 0;
     }
     
+    // Control
     if (mode == BMP_CONTROL) {
         rc = bmp_control_init();
 
@@ -74,7 +94,7 @@ int main(int argc, char *argv[])
         return rc;
     } 
 
- 
+    // Server
     if (mode == BMP_SERVER) {
 
         if (port == 0) {
@@ -87,9 +107,31 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+        if (rc < 0) {
+            bmp_log("Server detatch from shell failed");
+            return -1;
+        }
+
         timer = bmp_timer_init();
-        bmp_server_init(port, timer, interactive); 
-        bmp_server_run();
+
+        if (timer < 0) {
+            bmp_log("Timer init failed");
+            return -1;
+        }
+
+        rc = bmp_server_init(port, timer, interactive); 
+
+        if (rc < 0) {
+            return -1;
+        }
+
+        bmp_log("Listening on port: %d", port);
+
+        if (!interactive) {
+            rc = daemon(1, 1);
+        }
+
+        rc = bmp_server_run();
     }
 
     return rc;

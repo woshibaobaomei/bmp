@@ -209,8 +209,6 @@ bmp_server_run(int timer)
 {
     int i, e, n, fd;
 
-    bmp_log("Listening on port: %d", server.port);
- 
     while (1) {
         /*
          * Main blocking call

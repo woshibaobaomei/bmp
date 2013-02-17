@@ -157,7 +157,7 @@ bmp_log(const char *format, ...)
     va_list args;
     va_start(args, format);
 
-    p += snprintf(p, sizeof(log), "BMP# [%s] ", ts);
+    p += snprintf(p, sizeof(log), "[%s] ", ts);
     p += vsnprintf(p, sizeof(log)-(p-log), format, args);
 
     va_end(args);
@@ -165,7 +165,7 @@ bmp_log(const char *format, ...)
     printf("%s%s%s", init ? "" : "\n", log, init ? "\n" : "");
     fflush(stdout);
    
-    if (init) bmp_prompt();
+    //if (init) bmp_prompt();
 
     init = 0;
 

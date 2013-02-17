@@ -51,11 +51,10 @@ bmp_alarm_init()
 
 
 int 
-bmp_timer_init(bmp_server *server)
+bmp_timer_init()
 {
     int rc, timer[2];
-    struct epoll_event ev;
-
+ 
     if (!init) {
         bmp_alarm_init();
         init = 1;
@@ -91,18 +90,8 @@ bmp_timer_init(bmp_server *server)
     timerfd[timerfds++] = timer[1];
 
     /*
-     * Register the read-end of the pipe with the server's epoll queue
+     * Return the read-end of the pipe so the server can listen to it
      */
-    ev.data.fd = timer[0];
-    ev.events = EPOLLIN | EPOLLET;
-   
-    rc = epoll_ctl(server->eq, EPOLL_CTL_ADD, timer[0], &ev);
-
-    if (rc < 0) {
-        bmp_log("server timer listen error: %s", timer[0], strerror(errno));
-        return rc;
-    }
- 
     return timer[0];
 }
 

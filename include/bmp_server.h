@@ -17,7 +17,8 @@ struct bmp_server_ {
     int  eq;
     epv *ev;
     int  port;
-    int  ctl;
+    int  control;
+    int  timer;
  
     uint32_t  flags;
     uint64_t  bytes;
@@ -28,7 +29,7 @@ struct bmp_server_ {
 };
 
 
-int bmp_server_init(bmp_server *server, int port);
-int bmp_server_run(bmp_server *server, int timer);
+int bmp_server_init(int port, int timer, int interactive);
+int bmp_server_run();
  
 #endif

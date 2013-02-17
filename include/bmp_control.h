@@ -3,4 +3,8 @@
 
 #define BMP_UNIX_PATH "bmpd-%d"
 
+int bmp_control_init();
+int bmp_control_run();
+
+
 #endif

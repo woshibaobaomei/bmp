@@ -57,7 +57,7 @@ bmp_accept_clients(bmp_server *server, int events)
 
 
 static int 
-bmp_timer_process(bmp_server *server, int timer)
+bmp_server_timer_process(bmp_server *server, int timer)
 {
     int rc;
 
@@ -67,75 +67,108 @@ bmp_timer_process(bmp_server *server, int timer)
 }
 
 
+static void
+bmp_server_exit(int signo)
+{
+    char path[128];
+    snprintf(path, sizeof(path), BMP_UNIX_PATH, server.port);
+
+    unlink(path);
+
+    close(server.control);
+    
+    exit(1);
+}
+
+
 int 
-bmp_server_init(bmp_server *server, int port)
+bmp_server_init(int port, int timer, int interactive)
 {
     int rc = 0;
     struct epoll_event ev;
     struct sockaddr_in saddr;
 
-    memset(server, 0, sizeof(bmp_server));
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT,  bmp_server_exit);
+    signal(SIGTERM, bmp_server_exit);
+ 
 
-    server->port = port;
+    memset(&server, 0, sizeof(bmp_server));
+
+    server.port = port;
 
     memset(&saddr, 0, sizeof(saddr)); 
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons(server->port);
+    saddr.sin_port = htons(server.port);
 
-    server->fd = socket(AF_INET, SOCK_STREAM, 0);
+    server.fd = socket(AF_INET, SOCK_STREAM, 0);
     
-    if (server->fd < 0) {
+    if (server.fd < 0) {
         bmp_log("socket() failed: %s", strerror(errno));
         exit(1);
     }
 
-    rc = so_reuseaddr(server->fd);
+    rc = so_reuseaddr(server.fd);
 
     if (rc < 0) {
         return rc;
     }
 
-    rc = bind(server->fd, (struct sockaddr *) &saddr, sizeof(saddr));
+    rc = bind(server.fd, (struct sockaddr *) &saddr, sizeof(saddr));
 
     if (rc < 0) {
         bmp_log("bind() failed: %s", strerror(errno));
         return rc;
     }
  
-    rc = listen(server->fd, BMP_CLIENT_MAX);
+    rc = listen(server.fd, BMP_CLIENT_MAX);
 
     if (rc < 0) {
         bmp_log("listen() failed: %s", strerror(errno));
         return rc;
     }
     
-    rc = fd_nonblock(server->fd);
+    rc = fd_nonblock(server.fd);
 
     if (rc < 0) {
         return rc;
     }
  
-    server->eq = epoll_create(BMP_CLIENT_MAX);
+    server.eq = epoll_create(BMP_CLIENT_MAX);
 
-    if (server->eq < 0) {
+    if (server.eq < 0) {
         bmp_log("epoll_create1() failed: %s", strerror(errno));
         return -1;
     }
 
-    ev.data.fd = server->fd;
+    ev.data.fd = server.fd;
     ev.events = EPOLLIN | EPOLLET;
    
-    rc = epoll_ctl(server->eq, EPOLL_CTL_ADD, server->fd, &ev);
+    rc = epoll_ctl(server.eq, EPOLL_CTL_ADD, server.fd, &ev);
 
     if (rc < 0) {
         bmp_log("epoll_ctl(server->fd) failed: %s", strerror(errno));
         return rc;
     }
 
-    server->ev = calloc(BMP_CLIENT_MAX, sizeof(ev));
+    /*
+     * Register the read-end of the timer pipe with the server's epoll queue
+     */
+    server.timer = timer;
+    ev.data.fd = server.timer;
+    ev.events = EPOLLIN | EPOLLET;
 
-    if (server->ev == NULL) {
+    rc = epoll_ctl(server.eq, EPOLL_CTL_ADD, server.timer, &ev);
+
+    if (rc < 0) {
+        bmp_log("server timer listen error: %s", timer, strerror(errno));
+        return rc;
+    }
+
+    server.ev = calloc(BMP_CLIENT_MAX, sizeof(ev));
+
+    if (server.ev == NULL) {
         bmp_log("calloc(server->ev) failed");
         return -1;
     }
@@ -145,12 +178,23 @@ bmp_server_init(bmp_server *server, int port)
         bmp_client_addr_compare,
     };
 
-    server->clients = avl_multi_init(bmp_client_compare, NULL, BMP_CLIENT_AVL, 0);
+    server.clients = avl_multi_init(bmp_client_compare, NULL, BMP_CLIENT_AVL, 0);
 
     /* 
-     * Always start the non-interactive control channel (Unix Domain Socket)
+     * Always start the non-interactive control channel (loopback socket)
      */
-    rc = server->ctl = bmp_command_init(server, 0);
+    rc = server.control = bmp_command_init(&server, 0);
+
+    if (rc < 0) {
+
+    }
+
+    /*
+     * If we are interactive start the interactive control channel also (stdin)
+     */
+    if (interactive) {
+        rc = bmp_command_init(&server, 1);
+    }
 
     if (rc < 0) {
 
@@ -161,17 +205,17 @@ bmp_server_init(bmp_server *server, int port)
 
 
 int 
-bmp_server_run(bmp_server *server, int timer)
+bmp_server_run(int timer)
 {
     int i, e, n, fd;
 
-    bmp_log("Listening on port: %d", server->port);
+    bmp_log("Listening on port: %d", server.port);
  
     while (1) {
         /*
          * Main blocking call
          */
-        n = epoll_wait(server->eq, server->ev, BMP_CLIENT_MAX, -1);
+        n = epoll_wait(server.eq, server.ev, BMP_CLIENT_MAX, -1);
 
         if (n < 0) {
             if (errno == EINTR) {
@@ -184,8 +228,8 @@ bmp_server_run(bmp_server *server, int timer)
 
         for (i = 0; i < n; i++) {
   
-            e = server->ev[i].events; 
-            fd = server->ev[i].data.fd;
+            e = server.ev[i].events; 
+            fd = server.ev[i].data.fd;
 
             if ((e & EPOLLERR) || (e & EPOLLHUP)) {
                 /*
@@ -194,91 +238,34 @@ bmp_server_run(bmp_server *server, int timer)
                 continue;
             } 
 
-            if (fd == server->fd) { // server's listen socket - accept clients
+            if (fd == server.fd) { // server's listen socket - accept clients
 
-                bmp_accept_clients(server, e);
+                bmp_accept_clients(&server, e);
 
             } else if (fd == STDIN_FILENO) { // process commands
 
-                bmp_command_process(server, fd, e);
+                bmp_command_process(&server, fd, e);
 
-            } else if (fd == server->ctl) { // process commands
+            } else if (fd == server.control) { // process commands
 
-                bmp_command_process(server, fd, e);
+                bmp_command_process(&server, fd, e);
 
-            } else if (fd == timer) { // periodic timer
+            } else if (fd == server.timer) { // periodic timer
 
-                bmp_timer_process(server, timer);
+                bmp_server_timer_process(&server, timer);
 
             } else { // process client events
 
-                bmp_client_process(server, fd, e);
+                bmp_client_process(&server, fd, e);
 
             }
         }
     }
 
-    close(server->fd);
-    close(server->eq);
-    free(server->ev);
+    close(server.fd);
+    close(server.eq);
+    free(server.ev);
 
     return 0;
 }   
- 
- 
-static void
-bmp_server_exit(int signo)
-{
-    char path[128];
-    snprintf(path, sizeof(path), BMP_UNIX_PATH, server.port);
-
-    unlink(path);
-
-    close(server.ctl);
-    
-    exit(1);
-}
-
-
-int
-main(int argc, char *argv[])
-{
-    int rc = 0, timer = 0;
-    int interactive = 0;
-
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGINT,  bmp_server_exit);
-    signal(SIGTERM, bmp_server_exit);
-
-    rc = daemon(1,1);
-
-    rc = bmp_server_init(&server, 1111);
-
-    if (rc == 0) {
-        timer = bmp_timer_init(&server);
-    }
-
-    /*
-     * Start the interactive control channel if specified via command line
-     */
-    if (timer > 0 && interactive) {
-        rc = bmp_command_init(&server, 1);
-    }
-
-    if (rc == 0) {
-        rc = bmp_server_run(&server, timer); // loops indefinitely
-    }
-
-
-    bmp_server_exit(0);
-
-    bmp_log("Exit\n");
-
-    return 0;
-}
-            
-
-
-            
-
 

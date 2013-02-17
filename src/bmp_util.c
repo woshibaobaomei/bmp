@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -242,4 +243,68 @@ uptime_string(int s, char *buf, int len)
 
     return s;
 }
+
+
+int
+cmdexec(char *cmd, char *buf, int len)
+{
+    FILE *file;
+    char *ptr = buf;
+    int rc = 1;
+
+    memset(buf, 0, len);
+
+    if ((file = popen(cmd, "r")) == NULL) {
+        return -1;
+    }
+
+    while ((rc = read(fileno(file), ptr, len-(ptr-buf))) > 0) {
+        ptr += rc;
+        if (ptr - buf > len) break;
+    }
+  
+    return rc;
+}
+
+
+char *bmp_optarg = NULL;
+
+
+char *
+bmp_getopt(int argc, char *argv[], int *index)
+{
+    char *curr = NULL;
+    char *next = NULL;
+    bmp_optarg = NULL;
+
+    if (*index < argc) {
+        curr = argv[*index];
+        if (curr != NULL && *curr == '-' && strlen(curr) > 1) {
+            if (*index < argc - 1) {
+                next = argv[*index + 1];
+            }
+            if (next != NULL  && *next != '-') {
+                bmp_optarg = next;
+                (*index)++;
+            }
+            curr++;
+            (*index)++;
+        } else {
+           /*
+            * Option processing error
+            */
+            curr = NULL;
+        }
+    }
+
+    return curr;
+}
+
+
+void
+bmp_ungetopt(int *index)
+{
+    (*index) -= (bmp_optarg ? 2 : 1);
+}
+
 

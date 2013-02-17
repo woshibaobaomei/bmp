@@ -10,33 +10,24 @@
   git submodule update
 #fi     
 
-
 OPTS='-O3 -fpack-struct -Wall'
 
-
 #
-# bmpd - the BMP server
+# bmp
 # 
-gcc $OPTS -o bmpd  \
+gcc $OPTS -o bmp      \
  src/bmp_server.c     \
  src/bmp_client.c     \
  src/bmp_peer.c       \
  src/bmp_protocol.c   \
  src/bmp_command.c    \
+ src/bmp_control.c    \
  src/bmp_timer.c      \
  src/bmp_util.c       \
+ src/bmp_main.c       \
 -Iinclude             \
  lib/avl/src/*.c      \
 -Ilib/avl/include/
-
-#
-# The BMP control tool (show commands, etc)
-#
-gcc $OPTS -o bmp   \
- src/bmp_control.c    \
- src/bmp_util.c       \
--Iinclude
-
 
 PATH=$PATH:$(pwd)
 

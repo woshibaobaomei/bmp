@@ -4,9 +4,30 @@
 #include <errno.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include "bmp_util.h"
 #include "bmp_control.h"
 
 #define BUF_MAX 1024
+
+#define BMP_LISTEN_PORTS_CMD "ps -e             | grep %s  | awk '{print $1}' |"\
+                             "xargs -n1 lsof -p | grep TCP | awk '{print $9}' |"\
+                             "cut -d ':' -f 2-2 "
+
+int 
+bmp_server_listen_ports(int *ports)
+{
+    char  cmd[1024];
+    char  buf[1024];
+
+    snprintf(cmd, sizeof(cmd), BMP_LISTEN_PORTS_CMD, "bmpd");
+
+    cmdexec(cmd, buf, sizeof(buf));
+
+    printf("[%s]\n", buf); 
+
+    return 0;
+
+}
 
 int 
 bmp_control_server_connect(int port)
@@ -36,6 +57,25 @@ bmp_control_server_connect(int port)
 }
 
 
+int 
+bmp_control_init()
+{
+
+
+    return 0;
+}
+
+
+
+int 
+bmp_control_run()
+{
+
+
+    return 0;
+}
+
+#if 0
 int main(int argc, char *argv[])
 {
     int index, rc, fd;
@@ -81,3 +121,4 @@ int main(int argc, char *argv[])
  
     return 0;
 }
+#endif

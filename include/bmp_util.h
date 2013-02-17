@@ -43,5 +43,10 @@ int bmp_log(const char *fmt, ...);
 int bmp_prompt();
 int size_string(uint64_t size, char *buf, int len, int bytes);
 int uptime_string(int s, char *buf, int len);
+int cmdexec(char *cmd, char *buf, int len);
+
+extern char *bmp_optarg;
+char *bmp_getopt(int argc, char *argv[], int *index);
+void bmp_ungetopt(int *index);
 
 #endif

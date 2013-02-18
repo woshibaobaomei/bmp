@@ -200,7 +200,7 @@ bmp_server_init(int port, int timer, int interactive)
 
 
 int 
-bmp_server_run(int timer)
+bmp_server_run()
 {
     int i, e, n, fd;
 
@@ -245,7 +245,7 @@ bmp_server_run(int timer)
 
             } else if (fd == server.timer) { // periodic timer
 
-                bmp_server_timer_process(&server, timer);
+                bmp_server_timer_process(&server, fd);
 
             } else { // process client events
 

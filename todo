@@ -1,4 +1,3 @@
-- roll control client and server executable into one binary (bmp)
 - protocol code in server (bmp_protocol.c)
 - scale testing
 - finalize on message saving scheme

@@ -70,11 +70,6 @@ bmp_server_timer_process(bmp_server *server, int timer)
 static void
 bmp_server_exit(int signo)
 {
-    char path[128];
-    snprintf(path, sizeof(path), BMP_UNIX_PATH, server.port);
-
-    unlink(path);
-
     close(server.control);
     
     exit(1);

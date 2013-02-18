@@ -4,7 +4,7 @@
 #define BMP_UNIX_PATH "bmpd-%d"
 
 int bmp_control_init();
-int bmp_control_run();
+int bmp_control_run(int argc, char *argv[]);
 
 
 #endif

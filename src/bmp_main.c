@@ -86,10 +86,10 @@ int main(int argc, char *argv[])
         rc = bmp_control_init();
 
         if (rc < 0) {
-
+            return -1;
         }
 
-        rc = bmp_control_run();
+        rc = bmp_control_run(argc, argv);
 
         return rc;
     } 
@@ -104,11 +104,6 @@ int main(int argc, char *argv[])
 
         if (port < 200 || port > 65000) {
             fprintf(stderr, "%% Server listen port number '%d' invalid\n", port);
-            return -1;
-        }
-
-        if (rc < 0) {
-            bmp_log("Server detatch from shell failed");
             return -1;
         }
 
@@ -129,6 +124,11 @@ int main(int argc, char *argv[])
 
         if (!interactive) {
             rc = daemon(1, 1);
+        }
+
+        if (rc < 0) {
+            bmp_log("Server detatch from shell failed");
+            return -1;
         }
 
         rc = bmp_server_run();

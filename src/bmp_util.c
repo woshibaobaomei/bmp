@@ -164,8 +164,6 @@ bmp_log(const char *format, ...)
 
     printf("%s%s%s", init ? "" : "\n", log, init ? "\n" : "");
     fflush(stdout);
-   
-    //if (init) bmp_prompt();
 
     init = 0;
 

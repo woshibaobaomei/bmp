@@ -341,9 +341,9 @@ static int
 bmp_command_local_init(bmp_server *server)
 {
     int fd;
-    struct sockaddr_un saddr; 
+    struct sockaddr_in saddr; 
 
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         bmp_log("socket call unix domain failed: %s", strerror(errno));
         return -1;
     }
@@ -351,18 +351,18 @@ bmp_command_local_init(bmp_server *server)
     fd_nonblock(fd);
  
     memset(&saddr, 0, sizeof(saddr));
-    saddr.sun_family = AF_UNIX;
-    snprintf(saddr.sun_path, sizeof(saddr.sun_path), BMP_UNIX_PATH, server->port);
- 
-    unlink(saddr.sun_path);       
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = INADDR_ANY;
+    saddr.sin_port = htons(server->port + 1);
+        
     if (bind(fd, (const struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
         close(fd);
-        bmp_log("socket unix domain bind failed: %s", strerror(errno));
+        bmp_log("socket local bind failed: %s", strerror(errno));
         return -1;
     }
 
     if (listen(fd, 32) != 0) {
-        bmp_log("socket unix domain listen failed: %s", strerror(errno));
+        bmp_log("socket local listen failed: %s", strerror(errno));
     }
 
     return fd;

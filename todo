@@ -1,7 +1,5 @@
 - roll control client and server executable into one binary (bmp)
-- process command line options for conrol client and server
-- protocol test scripts
 - protocol code in server (bmp_protocol.c)
+- scale testing
 - finalize on message saving scheme
 - introduce new thread to save messages
-- move non-interactive control-channel from unix-domain to tcp based socket (listen on server port + 1)

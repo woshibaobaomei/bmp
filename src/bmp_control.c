@@ -18,7 +18,7 @@
  */
 #define BMP_LISTEN_PORTS_CMD                            \
 "ps -e              | grep %s     | awk '{print $1}' |" \
-"xargs -n1 lsof -Pp | grep LISTEN | awk '{print $9}' |" \
+"xargs -n1 lsof -Pp | grep LISTEN                    |" \
 "cut -d ':' -f 2-2 2> /dev/null"
 
 static int 

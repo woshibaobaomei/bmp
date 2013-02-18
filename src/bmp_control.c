@@ -7,6 +7,12 @@
 #include "bmp_util.h"
 #include "bmp_control.h"
 
+/*
+ * Each BMP server opens a listen socket for handling client connections on 
+ * port N and also opens a listen socket for handling control commands on 
+ * port N+1. So every instance of the server will have 2 listen sockets open. 
+ */
+
 #define BUF_MAX 1024
 
 #define BMP_LISTEN_PORTS_CMD                         \
@@ -41,6 +47,29 @@ bmp_server_listen_ports(int *ports, int len)
     return n;
 }
 
+
+static int ports[100];
+static int nport = 0;
+
+int 
+bmp_control_init()
+{
+    nport = bmp_server_listen_ports(ports, 100);
+
+    if (nport == 0) {
+        fprintf(stdout, "%% No BMP servers running\n");
+        return -1;
+    }
+
+    if (nport % 2 != 0) {
+        fprintf(stdout, "%% Internal error\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+
 int 
 bmp_control_server_connect(int port)
 {
@@ -62,31 +91,11 @@ bmp_control_server_connect(int port)
     rc = connect(fd, (struct sockaddr *) &saddr, sizeof(struct sockaddr_in));
 
     if (rc < 0) {
-        fprintf(stdout, "%% Could not connect to BMP server running on port: %d\n", port);
+        fprintf(stdout, "%% Could not connect to server on port: %d\n", port-1);
         return -1;
     }
 
     return fd;
-}
-
-
-static int ports[100];
-static int nport = 0;
-
-int 
-bmp_control_init()
-{
-    nport = bmp_server_listen_ports(ports, 100);
-
-    if (nport == 0) {
-        fprintf(stdout, "%% No BMP servers running\n");
-        return -1;
-    }
-
-    if (nport % 2 != 0) {
-        fprintf(stdout, "%% Internal error");
-        return -1;
-    }
 }
 
 
@@ -119,13 +128,17 @@ bmp_control(int argc, char *argv[], int port)
         printf("%s", out);
     }
 
+    return 0;
 }
 
 
-static int
+/*
+ * Iterate over the list of servers and do a "show summary" for them
+ */
+static void
 bmp_control_show_summaries(int argc, char *argv[])
 {
-    int i, port;
+    int i;
 
     for (i = 0; i < nport; i++) {
         bmp_control(argc, argv, ports[++i]);
@@ -136,9 +149,11 @@ bmp_control_show_summaries(int argc, char *argv[])
 int 
 bmp_control_run(int argc, char *argv[])
 {
-    int i, rc, port;
+    int i, rc, port = 0, found = 0;
 
-    // pre-parse options to see if this is the "bmp show summary" command 
+    /*
+     * Pre-parse options to see if this is the "bmp show summary" command
+     */ 
     if (argc == 3) {
         if (strcmp(argv[1], "show") == 0 &&
             strcmp(argv[2], "summary") == 0) {
@@ -147,10 +162,13 @@ bmp_control_run(int argc, char *argv[])
         }
     }
 
-    // if there are more than one servers running, a port number must be specified
+    /* 
+     * If there are more than one servers running, port must be specified
+     */
     rc = sscanf(argv[1], "%d", &port);
+    if (rc <= 0) port = 0;
     if (rc <= 0 && nport > 2) {
-        fprintf(stderr, "%% Multiple servers - specify a port number after 'bmp'\n\n");
+        fprintf(stderr, "%% Multiple servers - specify port after 'bmp'\n\n");
         for (i = 0; i < nport; i++) {
             fprintf(stderr, "* %d\n", ports[i++]);
         }
@@ -158,7 +176,29 @@ bmp_control_run(int argc, char *argv[])
         return -1;
     }
 
+    /*
+     * Verify specified port, if any
+     */
+    if (port != 0) {
+        for (i = 0; i < nport; i++) {
+            if (port == ports[i++]) {
+                found = 1; 
+                break;
+            }
+        }
 
+        if (!found) {
+            fprintf(stderr, "%% No server running on port: %d\n", port);
+            return -1;
+        }
+
+        argv[1] = " ";
+    }
+
+    /*
+     * Issue the command to the right server
+     */
+    bmp_control(argc, argv, port+1);
 
     return 0;
 }

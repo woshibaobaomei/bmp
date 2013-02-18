@@ -82,7 +82,10 @@ bmp_show_clients(bmp_server *server, char *cmd)
 {
     int id = 0;
 
-    if (avl_size(server->clients) == 0) return 0;
+    if (avl_size(server->clients) == 0) {
+        dprintf(out, "%% No clients\n");
+        return 0;
+    }
 
     dprintf(out, "\n");
     avl_walk(&server->clients[BMP_CLIENT_ADDR], bmp_show_clients_walker, &id, 0);
@@ -380,6 +383,10 @@ bmp_command_init(bmp_server *server, int interactive)
         fd = STDIN_FILENO;
     } else {
         fd = bmp_command_local_init(server);
+    }
+
+    if (fd < 0) {
+        return -1;
     }
     
     ev.data.fd = fd;

@@ -181,7 +181,7 @@ bmp_server_init(int port, int timer, int interactive)
     rc = server.control = bmp_command_init(&server, 0);
 
     if (rc < 0) {
-
+        return -1;
     }
 
     /*
@@ -192,7 +192,7 @@ bmp_server_init(int port, int timer, int interactive)
     }
 
     if (rc < 0) {
-
+        return -1;
     }
  
     return 0;

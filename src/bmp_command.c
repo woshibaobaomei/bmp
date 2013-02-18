@@ -276,26 +276,23 @@ bmp_command(bmp_server *server, char *cmd)
 static int 
 bmp_command_local_accept(int sock)
 {
-    int fd;
+    int fd, lastfd = -1;
     struct sockaddr caddr;
-    socklen_t slen;
+    socklen_t slen = sizeof(caddr);
 
     while (1) {
-
-        slen = sizeof(caddr);
-
         fd = accept(sock, &caddr, &slen); 
-
-        if (fd > 0) return fd;
-
-        if (errno == EAGAIN || errno == EWOULDBLOCK) break;
-
-        bmp_log("accept() failed: %s", strerror(errno));
-
-        return -1;
+        if (fd < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) 
+                bmp_log("accept() failed: %s", strerror(errno));
+    
+            break;
+        } else {
+            lastfd = fd;
+        }
     }  
 
-    return -1;
+    return lastfd;
 }
 
 
@@ -322,6 +319,7 @@ bmp_command_process(bmp_server *server, int fd, int events)
 
     if (rc < 0) {
         bmp_log("command read error: %d (%s)", strerror(errno));
+        return -1;
     }
  
     buffer[rc] = 0;

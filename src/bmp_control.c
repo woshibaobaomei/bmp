@@ -11,13 +11,14 @@
  * Each BMP server opens a listen socket for handling client connections on 
  * port N and also opens a listen socket for handling control commands on 
  * port N+1. So every instance of the server will have 2 listen sockets open. 
+ * The bmp_server_listen_ports returns an array containing all the listening 
+ * ports for all server instances that are running: 
+ *  
+ * [ Client Port #1, Control Port #1, Client Port #2, Control Port #2, ... ]
  */
-
-#define BUF_MAX 1024
-
-#define BMP_LISTEN_PORTS_CMD                         \
-"ps -e              | grep %s  | awk '{print $1}' |" \
-"xargs -n1 lsof -Pp | grep TCP | awk '{print $9}' |" \
+#define BMP_LISTEN_PORTS_CMD                            \
+"ps -e              | grep %s     | awk '{print $1}' |" \
+"xargs -n1 lsof -Pp | grep LISTEN | awk '{print $9}' |" \
 "cut -d ':' -f 2-2 2> /dev/null"
 
 static int 
@@ -91,7 +92,7 @@ bmp_control_server_connect(int port)
     rc = connect(fd, (struct sockaddr *) &saddr, sizeof(struct sockaddr_in));
 
     if (rc < 0) {
-        fprintf(stdout, "%% Could not connect to server on port: %d\n", port-1);
+        fprintf(stdout, "%% Could not connect to server on port: %d\n", port);
         return -1;
     }
 
@@ -99,8 +100,10 @@ bmp_control_server_connect(int port)
 }
 
 
+#define BUF_MAX 1024
+
 static int 
-bmp_control(int argc, char *argv[], int port)
+bmp_control(int argc, char *argv[], int cport)
 {
     int index, rc, fd;
     char out[BUF_MAX], cmd[BUF_MAX], *c = cmd;
@@ -109,7 +112,7 @@ bmp_control(int argc, char *argv[], int port)
     c += snprintf(c, sizeof(cmd), "%s ", argv[index]);
     c += snprintf(c, sizeof(cmd), "\n");
 
-    fd = bmp_control_server_connect(port);
+    fd = bmp_control_server_connect(cport);
 
     if (fd < 0) {
         return -1;
@@ -127,6 +130,8 @@ bmp_control(int argc, char *argv[], int port)
         out[rc] = 0;
         printf("%s", out);
     }
+
+    close(fd);
 
     return 0;
 }
@@ -193,6 +198,8 @@ bmp_control_run(int argc, char *argv[])
         }
 
         argv[1] = " ";
+    } else {
+        port = ports[0];
     }
 
     /*

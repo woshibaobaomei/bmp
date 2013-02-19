@@ -230,24 +230,20 @@ bmp_find_client_token(bmp_server *server, char *token)
         goto done;
     }
     
-    dprintf(out, "%% Multiple clients with ip %s - specify port:\n\n", token);
-
+    dprintf(out, "%% Multiple clients with this address:\n\n");
     for (curr = &idx; curr != NULL; curr = next) {
         next = curr->next;
-        dprintf(out, "* %d\n", bmp_sockaddr_port(&curr->client->addr));
+        dprintf(out, "* %s:%d\n", 
+                curr->client->name, 
+                bmp_sockaddr_port(&curr->client->addr));
         if (!curr->index) free(curr);
     }  
-    
     dprintf(out, "\n");
-
     return NULL;
 
 done:
 
-    if (!client) {
-        dprintf(out, "%% No client '%s'\n", token);
-    }
-
+    if (!client) dprintf(out, "%% No client '%s'\n", token);
     return client;
 }
 

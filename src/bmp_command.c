@@ -128,19 +128,26 @@ bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
 static bmp_client *
 bmp_find_client_token(char *token)
 {
-    int  id, ip[16], port;
+    int  rc, id, ip[4], port;
+    char *c;
+    
+    rc = inet_pton(AF_INET, token, ip);
 
-    if (sscanf(token, "%u.%u.%u.%u:%u", &ip[0], &ip[1], &ip[2], &ip[3], &port) == 1) {
+    if (rc != 1) {
+        rc = inet_pton(AF_INET6, token, ip);
     }
+    
+    if (rc == 1) {
+        c = strtok(token, ":");
+        if (c) 
+        c = strtok(NULL, ":");
+        
 
-    if (sscanf(token, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]) == 1) {
-        // If only the IP address was specified, there is a possibility that there
-        // are multiple clients with the same IP address but different port numbers.
-        // In this case, we can't really do much.. the user *has* to specify the
-        // port
+    } else {
+        rc = sscanf(token, "%d", &id)
     }
-
-    if (sscanf(token, "%d", &id) == 1) {
+ 
+    if (rc != 1) {
 
     }
 

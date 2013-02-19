@@ -2,3 +2,10 @@
 - scale testing
 - finalize on message saving scheme
 - introduce new thread to save messages
+
+Feb 19th
+--------
+- design command outputs 
+- implement more commands 
+  - bmp show client X
+- think about overall analysis design

@@ -6,6 +6,7 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
 
 #include "avl.h"
 #include "bmp_util.h"
@@ -128,30 +129,32 @@ bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
 static bmp_client *
 bmp_find_client_token(char *token)
 {
-    int  rc, id, ip[4], port;
-    char *c;
-    
-    rc = inet_pton(AF_INET, token, ip);
+    int rc, ip[4], port = 0, id = 0;
+    bmp_client *client;
 
-    if (rc != 1) {
-        rc = inet_pton(AF_INET6, token, ip);
-    }
-    
-    if (rc == 1) {
-        c = strtok(token, ":");
-        if (c) 
-        c = strtok(NULL, ":");
-        
+    rc = bmp_ipaddr_port_id_parse(token, ip, &port, &id);
 
-    } else {
-        rc = sscanf(token, "%d", &id)
-    }
- 
-    if (rc != 1) {
-
+    if (rc < 0) {
+        dprintf(out, "Invalid client format\n");
+        return NULL;
     }
 
-    return NULL;
+    if (id) {
+
+
+
+        // return a client based on id
+    }
+
+    if (port) {
+
+
+
+        // return a client based on ip + port
+    }
+
+
+    // return a client list based on ip
 }
 
 
@@ -172,7 +175,6 @@ bmp_show_client_command(bmp_server *server, char *cmd)
     client = bmp_find_client_token(token);
 
     if (!client) {
-        dprintf(out, "%% No client '%s' found", token);
         return -1;
     }
 

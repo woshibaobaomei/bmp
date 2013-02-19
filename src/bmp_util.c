@@ -45,7 +45,7 @@ char *space[] = {
 };
 
 
-void
+int
 bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len)
 {
     switch (af) {
@@ -58,6 +58,7 @@ bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len)
     default:
         break;
     }
+    return 0;
 }
 
 
@@ -126,6 +127,70 @@ bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
     if (cmp) return cmp;
 
     return bmp_sockaddr_port(a) - bmp_sockaddr_port(b);
+}
+
+
+/*
+ * Parse a string of the form "IP:Port" or "ID". Note that the IP address can 
+ * have ":" characters (IPv6) but the separator for the port is also ":" making 
+ * life more difficult 
+ */
+int
+bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id)
+{
+    int  rc, af = -1, first = 1;
+    char temp[1024], ipstr[64], *p = NULL, *q, *c = temp;
+
+    memset(temp, 0, sizeof(temp));
+    memset(ipstr, 0, sizeof(ipstr));
+    memcpy(temp, token, strlen(token));
+
+    /*
+     * Find the last ":" in the token
+     */
+    q = strchr(temp, ':');
+     
+    while (q != NULL) {
+        p = q;
+        q = strchr(q+1, ':');
+    }
+
+    if (p != NULL) temp[p-c] = 0;
+
+parseip:
+    
+    if (inet_pton(AF_INET, temp, ip) == 1) {
+        af = AF_INET;
+    } else {
+        if (inet_pton(AF_INET6, temp, ip) == 1) { 
+            af = AF_INET6;
+        }
+    }
+
+    if (af != AF_INET && af != AF_INET6 && first) {
+        first = 0;
+        memcpy(temp, token, strlen(token));
+        goto parseip;
+    }
+    
+    if (p) {
+        if (af == AF_INET6 && !first) goto noport;
+        rc = sscanf(p+1, "%d", port);
+    }
+
+noport:
+
+    if (p == NULL && af != AF_INET && af != AF_INET6) {
+        rc = sscanf(token, "%d", id);
+    } else if ( p && af != AF_INET && af != AF_INET6) {
+        rc = -1;
+    }
+ 
+    if (rc != 1) {
+        return -1;
+    } 
+
+    return 0;
 }
 
 

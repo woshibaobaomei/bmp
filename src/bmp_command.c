@@ -99,7 +99,7 @@ bmp_show_clients(bmp_server *server, char *cmd)
 static int 
 bmp_show_client(bmp_server *server, bmp_client *client)
 {
-    dprintf(out, "%s\n", client->name);
+    dprintf(out, "%s:%d\n", client->name, client->port);
     return 0;
 }
 

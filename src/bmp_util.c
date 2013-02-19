@@ -83,18 +83,6 @@ bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
 }
 
 
-#define bmp_sockaddr_ip(a)         \
-        (a->af == AF_INET ?        \
-        (void*)&a->ipv4.sin_addr : \
-        (void*)&a->ipv6.sin6_addr)
-
-
-#define bmp_sockaddr_port(a) \
-        (a->af == AF_INET ?  \
-         a->ipv4.sin_port :  \
-         a->ipv6.sin6_port)
-
-
 int 
 bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port)
 {
@@ -114,9 +102,9 @@ bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port)
 
 
 int 
-bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
+bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b, int pcomp)
 {
-    int cmp;
+    int cmp = 0;
 
     if (a->af != b->af) return a->af - b->af;
     
@@ -128,7 +116,9 @@ bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
 
     if (cmp) return cmp;
 
-    return bmp_sockaddr_port(a) - bmp_sockaddr_port(b);
+    if (pcomp) return bmp_sockaddr_port(a) - bmp_sockaddr_port(b);
+
+    return cmp;
 }
 
 

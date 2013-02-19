@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/un.h>
 #include <sys/epoll.h>
 #include <sys/time.h>
@@ -131,11 +132,10 @@ bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
 // Find clients ---------------------------------------------------------------
 
 typedef struct bmp_client_search_index_ {
-    int         id;
-    int         ip[4];
-    int         port;
-    int         index;
+    int id;
+    int index;
     bmp_client *client;
+    struct bmp_client_search_index_ *next;
 } bmp_client_search_index;
 
 
@@ -152,13 +152,41 @@ bmp_find_client_id_walker(void *node, void *ctx)
     return AVL_SUCCESS;
 }
 
+
+static int
+bmp_find_client_addr_list(void *node, void *ctx)
+{
+    bmp_client *client = (bmp_client *)node;
+    bmp_client_search_index *idx = (bmp_client_search_index *)ctx, *nidx, *tmp;
+    bmp_client *search = idx->client;
+
+    int cmp = bmp_sockaddr_compare(&client->addr,&search->addr,0);
+
+    if (cmp != 0) return AVL_SUCCESS;
+
+    if (idx->index++ == 0) {
+        idx->client = client;
+    } else {
+        nidx = calloc(1, sizeof(bmp_client_search_index));
+        if (nidx == NULL) {
+            return AVL_ERROR;
+        }
+        nidx->client = client;
+        tmp = idx->next;
+        idx->next = nidx;
+        nidx->next = tmp;
+    }
+
+    return AVL_SUCCESS;
+}
+
  
 static bmp_client *
 bmp_find_client_token(bmp_server *server, char *token)
 {
     int rc, ip[4], port = 0, id = 0;
     bmp_client *client = NULL, search;
-    bmp_client_search_index idx;
+    bmp_client_search_index idx, *curr, *next;
 
     memset(ip, 0, 16);
 
@@ -184,15 +212,35 @@ bmp_find_client_token(bmp_server *server, char *token)
     if (port) { // return a client based on ip + port
         assert(rc > 0);
         bmp_sockaddr_set(&search.addr, rc, (char*) ip, port);
-        client = (bmp_client*) 
-        avl_lookup(&server->clients[BMP_CLIENT_ADDR],
-        &search, NULL);
+        client = avl_lookup(&server->clients[BMP_CLIENT_ADDR],
+                            &search, NULL);
         goto done;
     }
 
     // return a client list based on ip (watch out for multiples)
+    idx.next = NULL;
+    idx.index = 0;
+    bmp_sockaddr_set(&search.addr, rc, (char*)ip, port);
+    idx.client = &search;
+    avl_walk(&server->clients[BMP_CLIENT_ADDR],
+    bmp_find_client_addr_list, &idx, 0);
     
+    if (idx.index <= 1) {
+        client = idx.client;
+        goto done;
+    }
+    
+    dprintf(out, "%% Multiple clients with ip %s - specify port:\n\n", token);
 
+    for (curr = &idx; curr != NULL; curr = next) {
+        next = curr->next;
+        dprintf(out, "* %d\n", bmp_sockaddr_port(&curr->client->addr));
+        if (!curr->index) free(curr);
+    }  
+    
+    dprintf(out, "\n");
+
+    return NULL;
 
 done:
 

@@ -27,7 +27,7 @@ bmp_client_addr_compare(void *a, void *b, void *c)
     bmp_client *A = (bmp_client*)a;
     bmp_client *B = (bmp_client*)b;
 
-    return bmp_sockaddr_compare(&A->addr, &B->addr);
+    return bmp_sockaddr_compare(&A->addr, &B->addr, 1);
 }
 
 

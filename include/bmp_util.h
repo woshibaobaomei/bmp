@@ -33,8 +33,20 @@ typedef union bmp_sockaddr_ {
 } bmp_sockaddr;
 
 
+#define bmp_sockaddr_ip(a)         \
+        (a->af == AF_INET ?        \
+        (void*)&a->ipv4.sin_addr : \
+        (void*)&a->ipv6.sin6_addr)
+
+
+#define bmp_sockaddr_port(a)   \
+        ((a)->af == AF_INET ?  \
+         (a)->ipv4.sin_port :  \
+         (a)->ipv6.sin6_port)
+
+
 int bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port);
-int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b);
+int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b, int pcomp);
 int bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len);
 
 int bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id);

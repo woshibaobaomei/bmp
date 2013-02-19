@@ -13,7 +13,7 @@
 #
 # bmp
 # 
-gcc -O3 -fpack-struct -Wall -o bmp \
+gcc -g -fpack-struct -Wall -o bmp \
  src/bmp_server.c    \
  src/bmp_client.c    \
  src/bmp_peer.c      \

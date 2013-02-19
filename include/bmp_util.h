@@ -26,17 +26,19 @@ do {                             \
 
 typedef union bmp_sockaddr_ {
     short               af;
-    struct sockaddr_in  ipv4;
-    struct sockaddr_in6 ipv6;
+    union {
+        struct sockaddr_in  ipv4;
+        struct sockaddr_in6 ipv6;
+    };
 } bmp_sockaddr;
 
 
+int bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port);
 int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b);
 int bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len);
+
 int bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id);
 int bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len);
-char *bmp_sockaddr_ip(bmp_sockaddr *a);
-
 
 int fd_nonblock(int fd);
 int so_reuseaddr(int fd);

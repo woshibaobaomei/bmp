@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
+#include <assert.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/un.h>
@@ -98,6 +99,7 @@ bmp_show_clients(bmp_server *server, char *cmd)
 static int 
 bmp_show_client(bmp_server *server, bmp_client *client)
 {
+    dprintf(out, "%s\n", client->name);
     return 0;
 }
 
@@ -125,36 +127,80 @@ bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
     return 0;
 }
 
+
+// Find clients ---------------------------------------------------------------
+
+typedef struct bmp_client_search_index_ {
+    int         id;
+    int         ip[4];
+    int         port;
+    int         index;
+    bmp_client *client;
+} bmp_client_search_index;
+
+
+static int
+bmp_find_client_id_walker(void *node, void *ctx)
+{
+    bmp_client_search_index *idx = (bmp_client_search_index*)ctx;
+     
+    if (++idx->index == idx->id) {
+        idx->client = (bmp_client *)node;
+        return AVL_ERROR; // stop the walk; not really an error
+    }
+
+    return AVL_SUCCESS;
+}
+
  
 static bmp_client *
-bmp_find_client_token(char *token)
+bmp_find_client_token(bmp_server *server, char *token)
 {
     int rc, ip[4], port = 0, id = 0;
-    bmp_client *client;
+    bmp_client *client = NULL, search;
+    bmp_client_search_index idx;
+
+    memset(ip, 0, 16);
 
     rc = bmp_ipaddr_port_id_parse(token, ip, &port, &id);
-
+ 
     if (rc < 0) {
-        dprintf(out, "Invalid client format\n");
+        dprintf(out, "%% Invalid format '%s'\n", token);
         return NULL;
     }
 
-    if (id) {
+    if (id) { // return a client based on id
+        idx.id = id;
+        idx.index = 0;     
+        idx.client = NULL;   
+        avl_walk(&server->clients[BMP_CLIENT_ADDR], 
+        bmp_find_client_id_walker, 
+        &idx, AVL_WALK_INORDER);
 
-
-
-        // return a client based on id
+        client = idx.client;
+        goto done;
     }
 
-    if (port) {
-
-
-
-        // return a client based on ip + port
+    if (port) { // return a client based on ip + port
+        assert(rc > 0);
+        bmp_sockaddr_set(&search.addr, rc, (char*) ip, port);
+        client = (bmp_client*) 
+        avl_lookup(&server->clients[BMP_CLIENT_ADDR],
+        &search, NULL);
+        goto done;
     }
 
+    // return a client list based on ip (watch out for multiples)
+    
 
-    // return a client list based on ip
+
+done:
+
+    if (!client) {
+        dprintf(out, "%% No client '%s'\n", token);
+    }
+
+    return client;
 }
 
 
@@ -172,7 +218,7 @@ bmp_show_client_command(bmp_server *server, char *cmd)
         return -1;
     }
 
-    client = bmp_find_client_token(token);
+    client = bmp_find_client_token(server, token);
 
     if (!client) {
         return -1;

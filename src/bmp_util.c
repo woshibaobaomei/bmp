@@ -82,28 +82,30 @@ bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
     return port;
 }
 
-char *
-bmp_sockaddr_ip(bmp_sockaddr *a)
-{
-    switch (a->af) {
-    case AF_INET:
-        return (char*)&a->ipv4.sin_addr;
-    case AF_INET6:
-        return (char*)&a->ipv6.sin6_addr;
-    default:
-        break;
-    }
-    return NULL;
-}
 
-uint16_t
-bmp_sockaddr_port(bmp_sockaddr *a)
+#define bmp_sockaddr_ip(a)         \
+        (a->af == AF_INET ?        \
+        (void*)&a->ipv4.sin_addr : \
+        (void*)&a->ipv6.sin6_addr)
+
+
+#define bmp_sockaddr_port(a) \
+        (a->af == AF_INET ?  \
+         a->ipv4.sin_port :  \
+         a->ipv6.sin6_port)
+
+
+int 
+bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port)
 {
-    switch (a->af) {
+    a->af = af;
+    switch (af) {
     case AF_INET:
-        return a->ipv4.sin_port;
+        memcpy(&a->ipv4.sin_addr, ip, 4);
+        a->ipv4.sin_port = port;
     case AF_INET6:
-        return a->ipv6.sin6_port;
+        memcpy(&a->ipv6.sin6_addr, ip, 16);
+        a->ipv6.sin6_port = port;
     default:
         break;
     }
@@ -138,7 +140,7 @@ bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b)
 int
 bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id)
 {
-    int  rc, af = -1, first = 1;
+    int  rc = 1, af = -1, first = 1;
     char temp[1024], ipstr[64], *p = NULL, *q, *c = temp;
 
     memset(temp, 0, sizeof(temp));
@@ -179,7 +181,7 @@ parseip:
     }
 
 noport:
-
+ 
     if (p == NULL && af != AF_INET && af != AF_INET6) {
         rc = sscanf(token, "%d", id);
     } else if ( p && af != AF_INET && af != AF_INET6) {
@@ -189,6 +191,10 @@ noport:
     if (rc != 1) {
         return -1;
     } 
+
+    if (af > 0) {
+        return af;
+    }
 
     return 0;
 }

@@ -1,4 +1,5 @@
 #include <time.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -130,8 +131,9 @@ bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b, int pcomp)
 int
 bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id)
 {
-    int  rc = 1, af = -1, first = 1;
-    char temp[1024], ipstr[64], *p = NULL, *q, *c = temp;
+    int  rc = 1, af = -1, first = 1, valid = 1;
+    char temp[1024], ipstr[64];
+    char *p = NULL, *q, *c = temp, *t;
 
     memset(temp, 0, sizeof(temp));
     memset(ipstr, 0, sizeof(ipstr));
@@ -173,7 +175,15 @@ parseip:
 noport:
  
     if (p == NULL && af != AF_INET && af != AF_INET6) {
-        rc = sscanf(token, "%d", id);
+        
+        rc = -1;
+
+        for (t = token; *t ; t++) 
+        if (!isspace(*t) && !isdigit(*t))
+        valid = 0;
+      
+        if (valid) rc = sscanf(token, "%d", id);
+
     } else if ( p && af != AF_INET && af != AF_INET6) {
         rc = -1;
     }

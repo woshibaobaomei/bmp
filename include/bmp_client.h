@@ -21,6 +21,7 @@ enum {
     BMP_CLIENT_AVL
 };
 
+
 /*
  * The bmp_client type represents a BGP speaker that has connected to us and 
  * is sending us data it receives (BGP updates) from its connected peers.  
@@ -46,6 +47,17 @@ struct bmp_client_ {
     avl_tree           *peers;
     struct bmp_server_ *server;
 };
+
+
+/*
+ * Structure used during a search of the client tree
+ */
+typedef struct bmp_client_search_index_ {
+    int id;
+    int index;
+    bmp_client *client;
+    struct bmp_client_search_index_ *next;
+} bmp_client_search_index;
 
  
 struct bmp_message_ {
@@ -75,6 +87,10 @@ int bmp_client_close(bmp_client *client, int reason);
 int bmp_client_fd_compare(void *a, void *b, void *c);
 int bmp_client_addr_compare(void *a, void *b, void *c);
 
+
+bmp_client *
+bmp_find_client_token(struct bmp_server_ *server, char *token, 
+                      bmp_client_search_index *idx);
 
 #endif
 

@@ -128,132 +128,16 @@ bmp_show_client_peer_command(bmp_server *server, bmp_client *client, char *cmd)
     return 0;
 }
 
-
-// Find clients ---------------------------------------------------------------
-
-typedef struct bmp_client_search_index_ {
-    int id;
-    int index;
-    bmp_client *client;
-    struct bmp_client_search_index_ *next;
-} bmp_client_search_index;
-
-
-static int
-bmp_find_client_id_walker(void *node, void *ctx)
-{
-    bmp_client_search_index *idx = (bmp_client_search_index*)ctx;
-     
-    if (++idx->index == idx->id) {
-        idx->client = (bmp_client *)node;
-        return AVL_ERROR; // stop the walk; not really an error
-    }
-
-    return AVL_SUCCESS;
-}
-
-
-static int
-bmp_find_client_addr_list(void *node, void *ctx)
-{
-    bmp_client *client = (bmp_client *)node;
-    bmp_client_search_index *idx = (bmp_client_search_index *)ctx, *nidx, *tmp;
-    bmp_client *search = idx->client;
-
-    int cmp = bmp_sockaddr_compare(&client->addr,&search->addr,0);
-
-    if (cmp != 0) return AVL_SUCCESS;
-
-    if (idx->index++ == 0) {
-        idx->client = client;
-    } else {
-        nidx = calloc(1, sizeof(bmp_client_search_index));
-        if (nidx == NULL) {
-            return AVL_ERROR;
-        }
-        nidx->client = client;
-        tmp = idx->next;
-        idx->next = nidx;
-        nidx->next = tmp;
-    }
-
-    return AVL_SUCCESS;
-}
-
  
-static bmp_client *
-bmp_find_client_token(bmp_server *server, char *token)
-{
-    int rc, ip[4], port = 0, id = 0;
-    bmp_client *client = NULL, search;
-    bmp_client_search_index idx, *curr, *next;
-
-    memset(ip, 0, 16);
-
-    rc = bmp_ipaddr_port_id_parse(token, ip, &port, &id);
- 
-    if (rc < 0) {
-        dprintf(out, "%% Invalid format '%s'\n", token);
-        return NULL;
-    }
-
-    if (id) { // return a client based on id
-        idx.id = id;
-        idx.index = 0;     
-        idx.client = NULL;   
-        avl_walk(&server->clients[BMP_CLIENT_ADDR], 
-        bmp_find_client_id_walker, 
-        &idx, AVL_WALK_INORDER);
-
-        client = idx.client;
-        goto done;
-    }
-
-    if (port) { // return a client based on ip + port
-        assert(rc > 0);
-        bmp_sockaddr_set(&search.addr, rc, (char*) ip, port);
-        client = avl_lookup(&server->clients[BMP_CLIENT_ADDR],
-                            &search, NULL);
-        goto done;
-    }
-
-    // return a client list based on ip (watch out for multiples)
-    idx.next = NULL;
-    idx.index = 0;
-    bmp_sockaddr_set(&search.addr, rc, (char*)ip, port);
-    idx.client = &search;
-    avl_walk(&server->clients[BMP_CLIENT_ADDR],
-    bmp_find_client_addr_list, &idx, 0);
-    
-    if (idx.index <= 1) {
-        client = idx.client;
-        goto done;
-    }
-    
-    dprintf(out, "%% Multiple clients with this address:\n\n");
-    for (curr = &idx; curr != NULL; curr = next) {
-        next = curr->next;
-        dprintf(out, "* %s:%d\n", 
-                curr->client->name, 
-                bmp_sockaddr_port(&curr->client->addr));
-        if (!curr->index) free(curr);
-    }  
-    dprintf(out, "\n");
-    return NULL;
-
-done:
-
-    if (!client) dprintf(out, "%% No client '%s'\n", token);
-    return client;
-}
-
-
 static int
 bmp_show_client_command(bmp_server *server, char *cmd)
 {
     char *token = NULL;
     int rc = 0;
     bmp_client *client = NULL;
+    bmp_client_search_index idx, *curr, *next;
+
+    memset(&idx, 0, sizeof(idx));
 
     NEXT_TOKEN(cmd, token);
 
@@ -262,9 +146,28 @@ bmp_show_client_command(bmp_server *server, char *cmd)
         return -1;
     }
 
-    client = bmp_find_client_token(server, token);
+    client = bmp_find_client_token(server, token, &idx);
 
-    if (!client) {
+    if (client == (bmp_client*)(-1)) {
+        dprintf(out, "Invalid format\n");
+        return -1;
+    }
+
+    if (client == NULL) {
+        dprintf(out, "No client '%s'\n", token);
+        return -1;
+    }
+
+    if (client != NULL && idx.index > 1) {
+        dprintf(out, "%% Multiple clients with this address:\n\n");
+        for (curr = &idx; curr != NULL; curr = next) {
+            next = curr->next;
+            dprintf(out, "* %s:%d\n", 
+                    curr->client->name, 
+                    bmp_sockaddr_port(&curr->client->addr));
+            if (!curr->index) free(curr);
+        }  
+        dprintf(out, "\n");
         return -1;
     }
 

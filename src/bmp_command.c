@@ -182,12 +182,12 @@ bmp_show_client_command(bmp_server *server, char *cmd)
     client = bmp_find_client_token(server, token, &idx);
 
     if (client == (bmp_client*)(-1)) {
-        dprintf(out, "Invalid format\n");
+        dprintf(out, "%% Invalid format '%s'\n", token);
         return -1;
     }
 
     if (client == NULL) {
-        dprintf(out, "No client '%s'\n", token);
+        dprintf(out, "%% No client '%s'\n", token);
         return -1;
     }
 

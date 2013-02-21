@@ -23,11 +23,19 @@ print_help()
     printf("  * bmp <command> (control mode)\n");
     printf("\n");
     printf("Server Mode Options:\n\n");
-    printf("  * interactive: -i\n");
+    printf("  * interactive : -i (default: no)\n");
+    printf("  * log-file    : -l <file>\n");
+    printf("  * data dir.   : -d <directory>\n");
+    printf("  * quiet       : -q (default: no)\n");
     printf("\n");
     printf("Control Mode Commands:\n\n");
     printf("  * show summary\n");
     printf("  * show clients\n");
+    printf("  * show client <client>\n"); 
+    printf("  * show client <client> messages\n");
+    printf("  * show client <client> peers\n");
+    printf("  * show client <client> peer <peer>\n");
+    printf("  * show client <client> peer <peer> messages\n");
     printf("\n");
 }
 

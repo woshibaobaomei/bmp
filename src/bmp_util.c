@@ -168,17 +168,21 @@ parseip:
     }
     
     if (p) {
+
         if (af == AF_INET6 && !first) goto noport;
-        rc = sscanf(p+1, "%d", port);
+
+        for (rc = -1, t = p+1; *t ; t++) 
+        if (!isspace(*t) && !isdigit(*t))
+        valid = 0;
+
+        if (valid) rc = sscanf(p+1, "%d", port);
     }
 
 noport:
  
     if (p == NULL && af != AF_INET && af != AF_INET6) {
-        
-        rc = -1;
 
-        for (t = token; *t ; t++) 
+        for (rc = -1, t = token; *t ; t++) 
         if (!isspace(*t) && !isdigit(*t))
         valid = 0;
       
@@ -280,10 +284,10 @@ so_reuseaddr(int fd)
 
 
 int
-size_string(uint64_t size, char *buf, int len, int bytes) 
+bytes_string(uint64_t size, char *buf, int len) 
 {
     int rc = 0;
-    char byte = bytes ? 'B' : ' ';
+    char byte = 'B';
 
     if (size < 1<<10) { // B
         rc = snprintf(buf, len, "%llu %c", size, byte);
@@ -292,7 +296,7 @@ size_string(uint64_t size, char *buf, int len, int bytes)
     } else if (size >= 1<<20 && size < 1<<30 ) { // MB
         rc = snprintf(buf, len, "%03.2f M%c", (float)size/(float)(1<<20), byte);
     } else if (size >= 1<<30 && size < 1LLU<<40) { // GB
-        rc = snprintf(buf, len, "%03.2f %s%c", (float)size/(float)(1<<30), bytes ? "G" : "B" , byte);
+        rc = snprintf(buf, len, "%03.2f %s%c", (float)size/(float)(1<<30), "G", byte);
     } else { // TB
         rc = snprintf(buf, len, "%03.2f T%c", (float)size/(float)(1LLU<<40), byte);
     }
@@ -300,6 +304,26 @@ size_string(uint64_t size, char *buf, int len, int bytes)
     return rc;
 }
 
+
+int
+size_string(uint64_t size, char *buf, int len) 
+{
+    int rc = 0;
+
+    if (size < 1000) { // B
+        rc = snprintf(buf, len, "%llu", size);
+    } else if (size >= 1000 && size < 1000000 ) { // KB
+        rc = snprintf(buf, len, "%03.2f K", (float)size/(float)(1000));
+    } else if (size >= 1000000 && size < 1000000000L ) { // MB
+        rc = snprintf(buf, len, "%03.2f M", (float)size/(float)(1000000));
+    } else if (size >= 1000000000 && size < 1000000000000L) { // GB
+        rc = snprintf(buf, len, "%03.2f B", (float)size/(float)(1000000000));
+    } else { // TB
+        rc = snprintf(buf, len, "%03.2f T", (float)size/(float)(1000000000000L));
+    }
+
+    return rc;
+}
 
 int 
 uptime_string(int s, char *buf, int len)

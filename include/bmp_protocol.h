@@ -2,13 +2,14 @@
 #define __BMP_PROTOCOL_H__
 
 #include <stdint.h>
-
+ 
 #define BMP_ROUTE_MONITORING       0
 #define BMP_STATISTICS_REPORT      1
 #define BMP_PEER_DOWN_NOTIFICATION 2
 #define BMP_PEER_UP_NOTIFICATION   3
 #define BMP_INITIATION_MESSAGE     4
 #define BMP_TERMINATION_MESSAGE    5
+#define BMP_MESSAGE_TYPE_MAX       6
 
 
 #define BMP_MESSAGE_TYPE_STRING(t)                              \
@@ -142,9 +143,11 @@ typedef struct bmp_peer_down_msg_ {
 
 
 //-----------------------------------------------------------------------------
+ 
+struct bmp_client_;
 
 char *
-bmp_protocol_read(bmp_client *client, char *data, char *end);
+bmp_protocol_read(struct bmp_client_ *client, char *data, char *end);
 
 #endif
 

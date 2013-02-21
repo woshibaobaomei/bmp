@@ -16,6 +16,7 @@
 #include "bmp_command.h"
 #include "bmp_server.h"
 #include "bmp_client.h"
+#include "bmp_protocol.h"
 
 static int out;
 static struct timeval now;
@@ -28,15 +29,15 @@ bmp_show_summary(bmp_server *server, char *cmd)
     char ms[32];
 
     dprintf(out, "\n");
-    dprintf(out, "Listening on port  : %d\n", server->port);
-    dprintf(out, "Active BGP clients : %d\n", avl_size(server->clients));
-    dprintf(out, "Active BGP peers   : %d\n", 0);
-    size_string(server->msgs, ms, sizeof(ms), 0);
-    dprintf(out, "BMP messages rcvd  : %s\n", ms);
-    size_string(server->bytes, bs, sizeof(bs), 1);
-    dprintf(out, "Total data rcvd    : %s\n", bs);
-    size_string(server->memory, bs, sizeof(bs), 1);
-    dprintf(out, "Total memory usage : %s\n", bs);       
+    dprintf(out, "BMP Server %d\n", server->port);
+    dprintf(out, "  Active BGP clients : %d\n", avl_size(server->clients));
+    dprintf(out, "  Active BGP peers   : %d\n", 0);
+    size_string(server->msgs, ms, sizeof(ms));
+    dprintf(out, "  Total msgs rcv'd   : %s\n", ms);
+    bytes_string(server->bytes, bs, sizeof(bs));
+    dprintf(out, "  Total data rcv'd   : %s\n", bs);
+    bytes_string(server->memory, bs, sizeof(bs));
+    dprintf(out, "  Total memory usage : %s\n", bs);       
 
     dprintf(out, "\n");
 
@@ -59,8 +60,8 @@ bmp_show_clients_walker(void *node, void *ctx)
     snprintf(as, sizeof(as), "%s:%d", client->name, client->port);
     uptime_string(now.tv_sec - client->time.tv_sec, up, sizeof(up));
     snprintf(pe, sizeof(pe), "%d", avl_size(client->peers));
-    snprintf(ms, sizeof(ms), "%llu", client->msgs);
-    size_string(client->bytes, bs, sizeof(bs), 1);
+    size_string(client->msgs, ms, sizeof(ms));
+    bytes_string(client->bytes, bs, sizeof(bs));
 
     if (id == 1) 
     dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs       Data\n");
@@ -91,7 +92,10 @@ bmp_show_clients(bmp_server *server, char *cmd)
     }
 
     dprintf(out, "\n");
-    avl_walk(&server->clients[BMP_CLIENT_ADDR], bmp_show_clients_walker, &id, 0);
+    avl_walk(&server->clients[BMP_CLIENT_ADDR], 
+             bmp_show_clients_walker, 
+             &id, 
+             AVL_WALK_INORDER);
     dprintf(out, "\n");
     return 0;
 }
@@ -100,7 +104,36 @@ bmp_show_clients(bmp_server *server, char *cmd)
 static int 
 bmp_show_client(bmp_server *server, bmp_client *client)
 {
-    dprintf(out, "%s:%d\n", client->name, client->port);
+    char up[32];
+    char bs[64];
+
+    uptime_string(now.tv_sec - client->time.tv_sec, up, sizeof(up));
+    bytes_string(client->bytes, bs, sizeof(bs));
+
+    dprintf(out, "\n");
+
+    dprintf(out, "BGP Client %s (port %d)\n\n", client->name, client->port);
+    dprintf(out, " Client up-time    : %s\n", up);
+    dprintf(out, " Total msgs rcv'd  : %llu\n", client->msgs);
+    dprintf(out, " Total data rcv'd  : %s\n", bs);
+    dprintf(out, " Active BGP peers  : %d\n\n", avl_size(client->peers));
+
+    dprintf(out, " Message Statistics\n");
+    dprintf(out, "  Initiation Msgs  : %llu\n", client->mstat[BMP_INITIATION_MESSAGE]);
+    dprintf(out, "  Termination Msgs : %llu\n", client->mstat[BMP_TERMINATION_MESSAGE]);
+    dprintf(out, "  Route Monitoring : %llu\n", client->mstat[BMP_ROUTE_MONITORING]);
+    dprintf(out, "  Stats Reports    : %llu\n", client->mstat[BMP_STATISTICS_REPORT]);
+    dprintf(out, "  Peer UP Notfn    : %llu\n", client->mstat[BMP_PEER_UP_NOTIFICATION]);
+    dprintf(out, "  Peer Down Notfn  : %llu\n\n", client->mstat[BMP_PEER_DOWN_NOTIFICATION]);
+
+    dprintf(out, " Peer Statistics\n");
+    dprintf(out, "  Global peers : %d\n", 0);
+    dprintf(out, "  L3VPN peers  : %d\n", 0);
+    dprintf(out, "  IPv4 peers   : %d\n", 0);
+    dprintf(out, "  IPv6 peers   : %d\n", 0);
+    dprintf(out, "  iBGP peers   : %d\n", 0);
+    dprintf(out, "  eBGP peers   : %d\n\n", 0);
+
     return 0;
 }
 
@@ -158,6 +191,9 @@ bmp_show_client_command(bmp_server *server, char *cmd)
         return -1;
     }
 
+    /*
+     * More than one client found with same ip.. list them and free the list
+     */
     if (client != NULL && idx.index > 1) {
         dprintf(out, "%% Multiple clients with this address:\n\n");
         for (curr = &idx; curr != NULL; curr = next) {

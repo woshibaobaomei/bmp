@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include "avl.h"
 #include "bmp_util.h"
+#include "bmp_protocol.h"
  
  
 #define BMP_CLIENT_MAX     (1 << 10)
@@ -42,6 +43,7 @@ struct bmp_client_ {
     uint32_t            flags;
     uint64_t            bytes;
     uint64_t            msgs;    
+    uint64_t            mstat[BMP_MESSAGE_TYPE_MAX]; 
     bmp_message        *head;
     bmp_message        *tail;
     avl_tree           *peers;

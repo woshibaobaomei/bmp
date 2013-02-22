@@ -204,6 +204,8 @@ bmp_server_run()
 {
     int i, e, n, fd;
 
+    gettimeofday(&server.time, 0);
+
     while (1) {
         /*
          * Main blocking call

@@ -27,9 +27,13 @@ bmp_show_summary(bmp_server *server, char *cmd)
 {
     char bs[32];
     char ms[32];
+    char up[32];
+
+    uptime_string(now.tv_sec - server->time.tv_sec, up, sizeof(up));
 
     dprintf(out, "\n");
-    dprintf(out, "BMP Server %d\n", server->port);
+    dprintf(out, "BMP Server (port %d)\n", server->port);
+    dprintf(out, "  BMP Server up-time : %s\n", up);
     dprintf(out, "  Active BGP clients : %d\n", avl_size(server->clients));
     dprintf(out, "  Active BGP peers   : %d\n", 0);
     size_string(server->msgs, ms, sizeof(ms));
@@ -112,13 +116,13 @@ bmp_show_client(bmp_server *server, bmp_client *client)
 
     dprintf(out, "\n");
 
-    dprintf(out, "BGP Client %s (port %d)\n\n", client->name, client->port);
-    dprintf(out, " Client up-time    : %s\n", up);
-    dprintf(out, " Total msgs rcv'd  : %llu\n", client->msgs);
-    dprintf(out, " Total data rcv'd  : %s\n", bs);
-    dprintf(out, " Active BGP peers  : %d\n\n", avl_size(client->peers));
+    dprintf(out, "BGP Client %s (port %d)\n", client->name, client->port);
+    dprintf(out, "  Client up-time   : %s\n", up);
+    dprintf(out, "  Total msgs rcv'd : %llu\n", client->msgs);
+    dprintf(out, "  Total data rcv'd : %s\n", bs);
+    dprintf(out, "  Active BGP peers : %d\n\n", avl_size(client->peers));
 
-    dprintf(out, " Message Statistics\n");
+    dprintf(out, "Message Statistics\n");
     dprintf(out, "  Initiation Msgs  : %llu\n", client->mstat[BMP_INITIATION_MESSAGE]);
     dprintf(out, "  Termination Msgs : %llu\n", client->mstat[BMP_TERMINATION_MESSAGE]);
     dprintf(out, "  Route Monitoring : %llu\n", client->mstat[BMP_ROUTE_MONITORING]);
@@ -126,7 +130,7 @@ bmp_show_client(bmp_server *server, bmp_client *client)
     dprintf(out, "  Peer UP Notfn    : %llu\n", client->mstat[BMP_PEER_UP_NOTIFICATION]);
     dprintf(out, "  Peer Down Notfn  : %llu\n\n", client->mstat[BMP_PEER_DOWN_NOTIFICATION]);
 
-    dprintf(out, " Peer Statistics\n");
+    dprintf(out, "Peer Statistics\n");
     dprintf(out, "  Global peers : %d\n", 0);
     dprintf(out, "  L3VPN peers  : %d\n", 0);
     dprintf(out, "  IPv4 peers   : %d\n", 0);

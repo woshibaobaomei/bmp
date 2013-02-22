@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <sys/epoll.h>
+#include <sys/time.h>
 #include "avl.h"
 
 /*
@@ -25,6 +26,7 @@ struct bmp_server_ {
     uint64_t  msgs;
     uint64_t  memory;
     uint32_t  peers;
+    struct timeval time;
     avl_tree *clients;
 };
 

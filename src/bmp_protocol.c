@@ -154,7 +154,6 @@ bmp_recv_msg(bmp_client *client, char *data, int len)
 
     client->server->msgs++;
     client->msgs++;
-
     client->mstat[hdr]++;
 
     data += BMP_MSG_HDR_LEN;

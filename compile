@@ -1,14 +1,13 @@
 #!/bin/sh
 
 #
-# Initialize the Git submodules
+# Initialize submodules:
 #
-#if [ $($ls lib/avl) ]; then
-#  : 
-#else
-  git submodule init
-  git submodule update
-#fi     
+# AVL submodule
+# NF  submodule (protocol tests)
+#
+git submodule init
+git submodule update
 
 #
 # bmp
@@ -27,5 +26,8 @@ gcc -g -fpack-struct -Wall -o bmp \
  lib/avl/src/*.c     \
 -Ilib/avl/include/
 
+#
+# Append 'pwd' to path so that users can simply run 'bmp' instead of './bmp'
+#
 PATH=$PATH:$(pwd)
 

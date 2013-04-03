@@ -4,3 +4,6 @@
 [submodule "lib/nf"]
 	path = lib/nf
 	url = https://github.com/forhadahmed/nf.git
+[submodule "lib/msgchunk"]
+	path = lib/msgchunk
+	url = https://github.com/forhadahmed/msgchunk

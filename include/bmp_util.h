@@ -1,6 +1,8 @@
 #ifndef __BMP_UTIL_H__
 #define __BMP_UTIL_H__
 
+#include <ctype.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -24,8 +26,21 @@ do {                             \
 } while (0);
 
 
+#define bmp_sockaddr_ip(a)     \
+    (a->af == AF_INET ?        \
+    (void*)&a->ipv4.sin_addr : \
+    (void*)&a->ipv6.sin6_addr)
+
+#define bmp_sockaddr_port(a)   \
+        ((a)->af == AF_INET ?  \
+        (a)->ipv4.sin_port :   \
+        (a)->ipv6.sin6_port)
+
+/*
+ * bmp_sockaddr can be casted with struct sockaddr
+ */
 typedef union bmp_sockaddr_ {
-    short               af;
+    short af;
     union {
         struct sockaddr_in  ipv4;
         struct sockaddr_in6 ipv6;
@@ -33,29 +48,18 @@ typedef union bmp_sockaddr_ {
 } bmp_sockaddr;
 
 
-#define bmp_sockaddr_ip(a)         \
-        (a->af == AF_INET ?        \
-        (void*)&a->ipv4.sin_addr : \
-        (void*)&a->ipv6.sin6_addr)
-
-
-#define bmp_sockaddr_port(a)   \
-        ((a)->af == AF_INET ?  \
-         (a)->ipv4.sin_port :  \
-         (a)->ipv6.sin6_port)
-
+int fd_nonblock(int fd);
+int so_reuseaddr(int fd);
 
 int bmp_sockaddr_set(bmp_sockaddr *a, int af, char *ip, int port);
 int bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b, int pcomp);
 int bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len);
 
-int bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id);
+
 int bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len);
+int bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id);
 
-int fd_nonblock(int fd);
-int so_reuseaddr(int fd);
 
-int bmp_log(const char *fmt, ...);
 int bmp_prompt();
 int size_string(uint64_t size, char *buf, int len);
 int bytes_string(uint64_t size, char *buf, int len);

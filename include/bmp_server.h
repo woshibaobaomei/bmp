@@ -2,7 +2,9 @@
 #define __BMP_SERVER_H__
 
 #include <stdint.h>
+#include <unistd.h>
 #include <sys/epoll.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include "avl.h"
 
@@ -17,8 +19,8 @@ struct bmp_server_ {
     int  fd;
     int  eq;
     epv *ev;
+    int  pid;
     int  port;
-    int  control;
     int  timer;
  
     uint32_t  flags;
@@ -27,11 +29,13 @@ struct bmp_server_ {
     uint64_t  memory;
     uint32_t  peers;
     struct timeval time;
-    avl_tree *clients;
+    avl_tree *sessions;
 };
 
 
-int bmp_server_init(int port, int timer, int interactive);
+int bmp_server_init(int port, int interactive);
 int bmp_server_run();
+
+int bmp_show_summary();
  
 #endif

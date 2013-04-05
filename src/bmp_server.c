@@ -1,34 +1,36 @@
 #include <time.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
-#include <errno.h>
 #include <signal.h>
-
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
-
-#include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include "bmp_log.h"
 #include "bmp_util.h"
 #include "bmp_timer.h"
+#include "bmp_table.h"
 #include "bmp_server.h"
-#include "bmp_client.h"
+#include "bgp_router.h"
 #include "bmp_control.h"
 #include "bmp_command.h"
+#include "bmp_session.h"
+#include "bmp_process.h"
 
-static bmp_server server;
+bmp_server server;
 
 /*
- * accept() connections from a server socket fd and create new client structs
+ * accept() connections from a server socket fd and create new sessions
  */  
 static int 
-bmp_accept_clients(bmp_server *server, int events)
+bmp_accept_sessions(bmp_server *server, int events)
 {
     int fd, rc;
     struct sockaddr caddr;
@@ -48,7 +50,7 @@ bmp_accept_clients(bmp_server *server, int events)
 
         } else {
 
-            rc = bmp_client_create(server, fd, &caddr, slen);
+            rc = bmp_session_create(server, fd, &caddr, slen);
         }
     }
   
@@ -62,6 +64,8 @@ bmp_server_timer_process(bmp_server *server, int timer)
     int rc;
 
     BMP_TIMER_READ(timer, rc);
+    
+    // XXX: nothing to really do here. TBD
 
     return rc;
 }
@@ -70,16 +74,14 @@ bmp_server_timer_process(bmp_server *server, int timer)
 static void
 bmp_server_exit(int signo)
 {
-    close(server.control);
-    
     exit(1);
 }
 
 
 int 
-bmp_server_init(int port, int timer, int interactive)
+bmp_server_init(int port, int interactive)
 {
-    int rc = 0;
+    int rc = 0, timer;
     struct epoll_event ev;
     struct sockaddr_in saddr;
 
@@ -89,7 +91,8 @@ bmp_server_init(int port, int timer, int interactive)
  
 
     memset(&server, 0, sizeof(bmp_server));
-
+ 
+    server.pid = getpid();
     server.port = port;
 
     memset(&saddr, 0, sizeof(saddr)); 
@@ -117,7 +120,7 @@ bmp_server_init(int port, int timer, int interactive)
         return rc;
     }
  
-    rc = listen(server.fd, BMP_CLIENT_MAX);
+    rc = listen(server.fd, BMP_SESSION_MAX);
 
     if (rc < 0) {
         bmp_log("listen() failed: %s", strerror(errno));
@@ -130,7 +133,11 @@ bmp_server_init(int port, int timer, int interactive)
         return rc;
     }
  
-    server.eq = epoll_create(BMP_CLIENT_MAX);
+    /*
+     * Create the epoll instance and register the listen socket with the server 
+     * epoll queue 
+     */
+    server.eq = epoll_create(BMP_SESSION_MAX);
 
     if (server.eq < 0) {
         bmp_log("epoll_create1() failed: %s", strerror(errno));
@@ -148,8 +155,16 @@ bmp_server_init(int port, int timer, int interactive)
     }
 
     /*
-     * Register the read-end of the timer pipe with the server's epoll queue
+     * Create a timer fd and register the read-end of the timer pipe with the 
+     * server's epoll queue
      */
+    timer = bmp_timer_init();
+
+    if (timer < 0) {
+        bmp_log("Timer init failed");
+        return -1;
+    }
+
     server.timer = timer;
     ev.data.fd = server.timer;
     ev.events = EPOLLIN | EPOLLET;
@@ -161,56 +176,70 @@ bmp_server_init(int port, int timer, int interactive)
         return rc;
     }
 
-    server.ev = calloc(BMP_CLIENT_MAX, sizeof(ev));
+    /*
+     * Allocate the clients event queue
+     */
+    server.ev = calloc(BMP_SESSION_MAX, sizeof(ev));
 
     if (server.ev == NULL) {
         bmp_log("calloc(server->ev) failed");
         return -1;
     }
 
-    avl_compare_fn bmp_client_compare[BMP_CLIENT_AVL] = {
-        bmp_client_fd_compare,
-        bmp_client_addr_compare,
-    };
-
-    server.clients = avl_multi_init(bmp_client_compare, NULL, BMP_CLIENT_AVL, 0);
+    /* 
+     * Initialize the session AVL tree
+     */
+    server.sessions = avl_init(bmp_session_compare, NULL, 0);
 
     /* 
-     * Always start the non-interactive control channel (loopback socket)
+     * Start the command processing task
      */
-    rc = server.control = bmp_command_init(&server, 0);
+    rc = bmp_command_init(interactive);
+    
+    if (rc < 0) {
+        return -1;
+    }
+
+    /*
+     * Initialize the main BMP "processing" task
+     */
+    rc = bmp_process_init();
 
     if (rc < 0) {
         return -1;
     }
 
     /*
-     * If we are interactive start the interactive control channel also (stdin)
+     * Initialize the BMP table module
      */
-    if (interactive) {
-        rc = bmp_command_init(&server, 1);
-    }
+    rc = bmp_table_init();
 
     if (rc < 0) {
         return -1;
     }
  
-    return 0;
+    return rc;
 }
 
 
 int 
 bmp_server_run()
 {
-    int i, e, n, fd;
+    int i, ev, n, fd, rc;
 
     gettimeofday(&server.time, 0);
+
+    rc = bmp_process_run();
+
+    if (rc < 0) {
+        return -1;
+    }
 
     while (1) {
         /*
          * Main blocking call
          */
-        n = epoll_wait(server.eq, server.ev, BMP_CLIENT_MAX, -1);
+        n = epoll_wait(server.eq, server.ev, BMP_SESSION_MAX, -1);
 
         if (n < 0) {
             if (errno == EINTR) {
@@ -223,35 +252,27 @@ bmp_server_run()
 
         for (i = 0; i < n; i++) {
   
-            e = server.ev[i].events; 
+            ev = server.ev[i].events; 
             fd = server.ev[i].data.fd;
 
-            if ((e & EPOLLERR) || (e & EPOLLHUP)) {
+            if ((ev & EPOLLERR) || (ev & EPOLLHUP)) {
                 /*
                  * Error
                  */
                 continue;
             } 
 
-            if (fd == server.fd) { // server's listen socket - accept clients
+            if (fd == server.fd) { // server's listen socket - accept sessions
 
-                bmp_accept_clients(&server, e);
-
-            } else if (fd == STDIN_FILENO) { // process commands
-
-                bmp_command_process(&server, fd, e);
-
-            } else if (fd == server.control) { // process commands
-
-                bmp_command_process(&server, fd, e);
+                bmp_accept_sessions(&server, ev);
 
             } else if (fd == server.timer) { // periodic timer
 
                 bmp_server_timer_process(&server, fd);
 
-            } else { // process client events
+            } else { // session events
 
-                bmp_client_process(&server, fd, e);
+                bmp_session_process(&server, fd, ev);
 
             }
         }
@@ -263,4 +284,14 @@ bmp_server_run()
 
     return 0;
 }   
+
+
+int
+bmp_show_summary()
+{
+    dprintf(out, "%% TODO\n");
+    return 0;
+}
+
+
 

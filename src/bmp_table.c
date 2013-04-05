@@ -1,12 +1,20 @@
+#include "bmp_table.h"
+#include "bgp_router.h"
 
 
-static bgp_table bgp_ipv4_unicast_table;
-static bgp_table bgp_ipv4_label_table;
-static bgp_table bgp_ipv4_vpn_table;
+int 
+bmp_table_init()
+{
+    int rc;
 
+    rc = bgp_router_init();
 
-static bgp_table bgp_ipv6_unicast_table;
-static bgp_table bgp_ipv6_label_table;
-static bgp_table bgp_ipv6_vpn_table;
+    if (rc < 0) {
+        return -1;
+    }
 
+    // TODO: initialize more table related stuff
+
+    return 0;
+}
 

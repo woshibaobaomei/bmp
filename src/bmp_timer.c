@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include "bmp_log.h"
 #include "bmp_util.h"
 #include "bmp_timer.h"
 #include "bmp_server.h"
@@ -20,7 +21,7 @@
 
 #define BMP_TIMERFD_MAX 8
 
-static int init = 0;
+static int timerinit = 0;
 static int timerfd[BMP_TIMERFD_MAX];
 static int timerfds = 0;
 
@@ -55,9 +56,9 @@ bmp_timer_init()
 {
     int rc, timer[2];
  
-    if (!init) {
+    if (!timerinit) {
         bmp_alarm_init();
-        init = 1;
+        timerinit = 1;
     }
 
     if (timerfds == BMP_TIMERFD_MAX-1) {

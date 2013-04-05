@@ -1,321 +1,409 @@
-
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <sys/time.h>
 
+#include "bmp_log.h"
 #include "bmp_util.h"
-#include "bmp_peer.h"
-#include "bmp_recv.h"
-#include "bmp_client.h"
-#include "bmp_server.h"
-#include "bmp_process.h"
+#include "bgp_peer.h"
+#include "bgp_router.h"
+#include "bmp_command.h"
+#include "bmp_session.h"
+
+
+avl_tree *bgp_router_context[BGP_ROUTER_CONTEXT_MAX];
+
+
+avl_tree *
+bgp_routers(int context)
+{
+    avl_tree *routers;
+
+    routers = bgp_router_context[context];
+
+    return routers;
+}
 
 
 int
-bmp_client_fd_compare(void *a, void *b, void *c)
+bgp_router_compare(void *a, void *b, void *c)
 {
-    bmp_client *A = (bmp_client*)a;
-    bmp_client *B = (bmp_client*)b;
+    bgp_router *A = (bgp_router*)a;
+    bgp_router *B = (bgp_router*)b;
 
-    return (A->fd - B->fd);
+    return bmp_sockaddr_compare(&A->addr, &B->addr, 0);
 }
+
 
 int
-bmp_client_addr_compare(void *a, void *b, void *c)
+bgp_router_init()
 {
-    bmp_client *A = (bmp_client*)a;
-    bmp_client *B = (bmp_client*)b;
+    int index;
+    avl_tree *tree;
 
-    return bmp_sockaddr_compare(&A->addr, &B->addr, 1);
-}
-
-
-
-static int
-bmp_client_find_id_walker(void *node, void *ctx)
-{
-    bmp_client_search_index *idx = (bmp_client_search_index*)ctx;
-     
-    if (++idx->index == idx->id) {
-        idx->client = (bmp_client *)node;
-        return AVL_ERROR; // stop the walk; not really an error
-    }
-
-    return AVL_SUCCESS;
-}
-
-
-static int
-bmp_client_find_addr_list(void *node, void *ctx)
-{
-    bmp_client *client = (bmp_client *)node;
-    bmp_client_search_index *idx = (bmp_client_search_index *)ctx, *nidx, *tmp;
-    bmp_client *search = idx->client;
-
-    int cmp = bmp_sockaddr_compare(&client->addr,&search->addr,0);
-
-    if (cmp != 0) return AVL_SUCCESS;
-
-    if (idx->index++ == 0) {
-        idx->client = client;
-    } else {
-        nidx = calloc(1, sizeof(bmp_client_search_index));
-        if (nidx == NULL) {
-            return AVL_ERROR;
+    for (index = 0; index < BGP_ROUTER_CONTEXT_MAX; index++) {
+        tree = avl_init(bgp_router_compare, NULL, 0);
+        if (tree == NULL) {
+            bmp_log("router tree init failed");
+            return -1;
         }
-        nidx->client = client;
-        tmp = idx->next;
-        idx->next = nidx;
-        nidx->next = tmp;
+        bgp_router_context[index] = tree;
     }
 
-    return AVL_SUCCESS;
+    return 0;
 }
 
- 
-bmp_client *
-bmp_find_client_token(bmp_server *server, 
-                      char *token, 
-                      bmp_client_search_index *idx)
+
+static bgp_router *
+bgp_router_alloc(bmp_session *session, bmp_sockaddr *addr)
 {
-    int rc, ip[4], port = 0, id = 0;
-    bmp_client *client = NULL, search;
+    bgp_router *router = calloc(1, sizeof(bgp_router));
 
-    memset(ip, 0, 16);
-
-    rc = bmp_ipaddr_port_id_parse(token, ip, &port, &id);
-  
-    if (rc < 0) {
-        return (bmp_client*)(-1); // funky!
+    if (router == NULL) {
+        bmp_log("bgp router alloc failed");
+        return NULL;
     }
 
-    if (id) { // return a client based on id
-        idx->id = id;
-        idx->index = 0;     
-        idx->client = NULL;   
-        avl_walk(&server->clients[BMP_CLIENT_ADDR], 
-                 bmp_client_find_id_walker, 
-                 idx, 
-                 AVL_WALK_INORDER);
-        idx->index = 0;
-        client = idx->client;
-        goto done;
-    }
+    memcpy(&router->addr, addr, sizeof(bmp_sockaddr));
+    router->port = bmp_sockaddr_port(addr);
+    router->session = session;
 
-    if (port) { // return a client based on ip + port
-        assert(rc > 0);
-        bmp_sockaddr_set(&search.addr, rc, (char*) ip, port);
-        client = avl_lookup(&server->clients[BMP_CLIENT_ADDR],
-                            &search, NULL);
-        goto done;
-    }
-
-    // return a client list based on ip (watch out for multiples)
-    idx->next = NULL;
-    idx->index = 0;
-    bmp_sockaddr_set(&search.addr, rc, (char*)ip, port);
-    idx->client = &search;
-    avl_walk(&server->clients[BMP_CLIENT_ADDR],
-             bmp_client_find_addr_list, 
-             idx, 
-             AVL_WALK_INORDER);
-
-    client = (idx->index == 0 ? NULL : idx->client);
-
-done:
-
-    return client;
+    return router;
 }
 
 
 static void
-bmp_client_cleanup(bmp_client *client)
+bgp_router_list_add(bgp_router *node, bgp_router *list)
 {
-    //free(client);
+
+}
+
+
+bgp_router *
+bgp_router_add(bmp_session *session, bmp_sockaddr *addr, int context)
+{
+    bgp_router *router, temp, *search;
+    avl_tree *tree = bgp_router_context[context];
+
+    router = bgp_router_alloc(session, addr);
+
+    if (router == NULL) {
+        return NULL;
+    }
+
+    memcpy(&temp.addr, addr, sizeof(bmp_sockaddr));
+    
+    search = avl_lookup(tree, &temp, NULL);
+
+    if (search == NULL) {
+        avl_insert(tree, router, NULL);
+        return router;
+    }
+ 
+    /*
+     * Found router is not NULL. This can happen when we are trying  to insert 
+     * since we only compare routers by IP but two bgp_router objects can have 
+     * the same IP but different ports. These routers sharing the same IP are 
+     * chained together in a list 
+     */
+    bgp_router_list_add(search, router);
+
+    return router;
+}
+
+
+// router search routines -----------------------------------------------------
+
+
+static bgp_router *
+bgp_router_list_find_walker(bgp_router *router, void *ctx)
+{
+    bgp_router_search_index *idx = (bgp_router_search_index *)ctx;
+    
+    if (router == NULL) return NULL;
+    
+    ++idx->index;
+    
+    // search by ID
+    if (idx->id > 0 && idx->index == idx->id) return router;
+    
+    // search by port
+    if (idx->port > 0) if (router->port == idx->port) return router;
+
+    return NULL;
+}
+
+
+/*
+ * We are looking for the list of routers with the same IP but different port
+ * numbers. Make a list using the bgp_router_search_index structures as nodes
+ */
+static void
+bgp_router_list_find_add_walker(bgp_router *router, void *ctx)
+{
+    bgp_router_search_index *idx = (bgp_router_search_index *)ctx;
+    
+    if (router == NULL) return;
+    
+    
+    
+    
+
+}
+
+
+static int
+bgp_router_tree_find_walker(void *node, void *ctx)
+{
+    bgp_router *search, *router = (bgp_router *)node;
+    bgp_router_search_index *idx = (bgp_router_search_index *)idx;
+    
+    while (router != NULL) {
+        search = bgp_router_list_find_walker(router, ctx);
+        if (search != NULL) {
+            idx->router = search;
+            return AVL_ERROR; // not really an error, just stop the walk
+        }
+        router = router->next;
+        search = NULL;
+    }
+    return AVL_SUCCESS;
+}
+
+ 
+static bgp_router *
+bgp_find_router_token(avl_tree *routers, 
+                      char *token, 
+                      bgp_router_search_index *idx)
+{
+    int rc, ip[4], port = 0, id = 0;
+    bgp_router *router = NULL, search;
+
+    memset(ip, 0, 16);
+    memset(idx, 0, sizeof(bgp_router_search_index));
+
+    rc = bmp_ipaddr_port_id_parse(token, ip, &port, &id);
+  
+    if (rc < 0) {
+        return (bgp_router*)(-1); // funky!
+    }
+
+    if (id) { // return a client based on id
+        idx->id = id; 
+        avl_walk(routers, bgp_router_tree_find_walker, idx, AVL_WALK_INORDER);
+        router = idx->router;
+        idx->index = 0;
+        goto done;
+    }
+
+    if (port) { // return a client based on ip + port
+        bmp_sockaddr_set(&search.addr, rc, (char*) ip, port);
+        idx->port = port;
+        router = avl_lookup(routers, &search, NULL);
+        router = bgp_router_list_find_walker(router, idx);
+        idx->index = 0;
+        goto done;
+    }
+
+    // return a client list based on ip (watch out for multiples)
+    bmp_sockaddr_set(&search.addr, rc, (char*)ip, port);
+    router = avl_lookup(routers, router, idx);
+    // TODO: finish
+
+ 
+done:
+
+    return router;
+}
+
+
+// router show commands -------------------------------------------------------
+
+
+static void
+bmp_show_bgp_routers_list_walker(bgp_router *router, void *ctx)
+{
+    int id = ++(*((int*)ctx));
+    
+    char as[64];
+    char up[32];
+    char pe[32];
+    char ms[32];
+    char bs[64];
+
+    bmp_session *session = router->session;
+
+    snprintf(as, sizeof(as), "%s:%d", router->name, router->port);
+    uptime_string(now.tv_sec - session->time.tv_sec, up, sizeof(up));
+    snprintf(pe, sizeof(pe), "%d", avl_size(router->peers));
+    size_string(router->msgs, ms, sizeof(ms));
+    bytes_string(session->bytes, bs, sizeof(bs));
+
+    if (id == 1) 
+    dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs       Data\n");
+    dprintf(out, "%3d    %s%s"                      "%s%s"         "%s%s"    "%s%s"     "%s  \n", 
+            id, 
+            as, 
+            space[26-strlen(as)], 
+            up,
+            space[15-strlen(up)],
+            pe,
+            space[9-strlen(pe)],
+            ms,
+            space[10-strlen(ms)], 
+            bs);   
+}
+
+
+static int
+bmp_show_bgp_routers_tree_walker(void *node, void *ctx)
+{
+    bgp_router *router = (bgp_router *)node;
+
+    while (router != NULL) {
+        bmp_show_bgp_routers_list_walker(router, ctx);
+        router = router->next;
+    }
+
+    return AVL_SUCCESS;
 }
 
 
 int
-bmp_client_close(bmp_client *client, int reason)
+bmp_show_bgp_routers()
 {
-    assert(client != NULL);
-    assert(client->fd != 0);
+    int id = 0;
+    avl_tree *routers = bgp_routers(0);
 
-    avl_multi_remove(client->server->clients, client, NULL);
+    if (avl_size(routers) == 0) {
+        dprintf(out, "%% No routers\n");
+        return 0;
+    }
 
-    bmp_log("BMP-ADJCHANGE: %s:%d Down (%s)", client->name, client->port,
-             BMP_CLIENT_CLOSE_REASON(reason));
+    dprintf(out, "\n");
+    avl_walk(routers, bmp_show_bgp_routers_tree_walker, &id, AVL_WALK_INORDER);
+    dprintf(out, "\n");
+    return 0;
+}
 
 
-    close(client->fd); // this will also remove the fd from the epoll queue
+int 
+bmp_show_bgp_router(bgp_router *router)
+{
+    char up[32];
+    char bs[64];
 
-    bmp_client_cleanup(client);
+    bmp_session *session = router->session;
+
+    assert(session != NULL);
+
+    uptime_string(now.tv_sec - session->time.tv_sec, up, sizeof(up));
+    bytes_string(session->bytes, bs, sizeof(bs));
+
+    dprintf(out, "\n");
+
+    dprintf(out, "BGP Router %s (port %d)\n", router->name, session->port);
+    dprintf(out, "  Client up-time   : %s\n", up);
+    dprintf(out, "  Total msgs rcv'd : %"PRIu64"\n", router->msgs);
+    dprintf(out, "  Total data rcv'd : %s\n", bs);
+    dprintf(out, "  Active BGP peers : %d\n\n", avl_size(router->peers));
+
+    dprintf(out, "Message Statistics\n");
+    dprintf(out, "  Initiation Msgs  : %"PRIu64"\n", router->mstat[BMP_INITIATION_MESSAGE]);
+    dprintf(out, "  Termination Msgs : %"PRIu64"\n", router->mstat[BMP_TERMINATION_MESSAGE]);
+    dprintf(out, "  Route Monitoring : %"PRIu64"\n", router->mstat[BMP_ROUTE_MONITORING]);
+    dprintf(out, "  Stats Reports    : %"PRIu64"\n", router->mstat[BMP_STATISTICS_REPORT]);
+    dprintf(out, "  Peer UP Notfn    : %"PRIu64"\n", router->mstat[BMP_PEER_UP_NOTIFICATION]);
+    dprintf(out, "  Peer Down Notfn  : %"PRIu64"\n\n", router->mstat[BMP_PEER_DOWN_NOTIFICATION]);
+
+    dprintf(out, "Peer Statistics\n");
+    dprintf(out, "  Global peers : %d\n", 0);
+    dprintf(out, "  L3VPN peers  : %d\n", 0);
+    dprintf(out, "  IPv4 peers   : %d\n", 0);
+    dprintf(out, "  IPv6 peers   : %d\n", 0);
+    dprintf(out, "  iBGP peers   : %d\n", 0);
+    dprintf(out, "  eBGP peers   : %d\n\n", 0);
 
     return 0;
 }
 
 
 static int
-bmp_client_read(bmp_client *client)
+bmp_show_bgp_router_messages(bgp_router *router)
 {
-    int rc = 1, error = 0, space, rdata = 0;
-    char *pread;
 
-    assert(client->fd != 0);
+    return 0;
+}
 
-    while (rc > 0) {
 
-    while ((space = BMP_RDBUF_SPACE(client)) > 0) {
-
-        rc = read(client->fd, client->rdptr, space);
-
-        if (rc <= 0) {
-            error = errno;
-            break;
-        }
-
-        rdata += rc;
-            
-        client->server->bytes += rc; 
-        client->bytes += rc;           
-        client->rdptr += rc;
-    }    
-
-    if (client->rdptr - client->rdbuf > 0) {
-        /*
-         * Whatever we read, feed it to the protocol machinery. This will
-         * consume the read buffer upto the last full PDU, leaving behind a 
-         * partial PDU if any bytes should remain
-         */
-        pread = bmp_recv(client, client->rdbuf, client->rdptr);
-        
-        /*
-         * If the protocol parsing detects an error, it will return NULL
-         */
-        if (pread == NULL) return rc;
- 
-        /*
-         * Protocol should *not* read past the end of the read buffer
-         */
-        assert(pread <= client->rdptr);
-
-        /* 
-         * If pread == client->rdbuf for too many iterations, we have an issue
-         */
-        
-        /*
-         * Copy the fragment PDU to the head of the read buffer. The protocol
-         * read always happens from the head of the read buffer
-         */
-        if (pread < client->rdptr && pread != client->rdbuf) {
-            memcpy(client->rdbuf, pread, client->rdptr - pread);
-        }
-        
-        client->rdptr = client->rdbuf + (client->rdptr - pread);
-    }
+int
+bmp_show_bgp_router_command(char *cmd)
+{
+    char *token = NULL;
+    int rc = 0;
+    bgp_router *router = NULL;
+    bgp_router_search_index idx, *curr, *next;
+    avl_tree *routers = bgp_routers(0);
     
+    memset(&idx, 0, sizeof(idx));
+
+    NEXT_TOKEN(cmd, token);
+
+    if (!token) {
+        dprintf(out, "%% Expected a keyword after 'router'\n");
+        return -1;
+    }
+
+    router = bgp_find_router_token(routers, token, &idx);
+
+    if (router == (bgp_router *)(-1)) {
+        dprintf(out, "%% Invalid format '%s'\n", token);
+        return -1;
+    }
+
+    if (router == NULL) {
+        dprintf(out, "%% No router '%s'\n", token);
+        return -1;
     }
 
     /*
-     * If we read some data from this client, we have to signal the processing 
-     * task to "process" this client now. Note: at this point, the client COULD 
-     * be in inactive state (session torn down, etc)
-     *  
+     * More than one router found with same IP.. list them and free the list
      */
-    if (rdata > 0) {
-        bmp_process_signal(client);
+    if (router != NULL && idx.index > 1) {
+        dprintf(out, "%% Multiple routers with this address:\n\n");
+        for (curr = &idx; curr != NULL; curr = next) {
+            next = curr->next;
+            dprintf(out, "* %s:%d\n", 
+                    curr->router->name, 
+                    bmp_sockaddr_port(&curr->router->addr));
+            if (curr != &idx) free(curr);
+        }  
+        dprintf(out, "\n");
+        return -1;
     }
 
-    if (rc == 0) {
-        bmp_client_close(client, BMP_CLIENT_REMOTE_CLOSE); 
-    }
-    
-    if (rc < 0 && error != EAGAIN) {
-        bmp_client_close(client, BMP_CLIENT_READ_ERROR);
-    }
-    
-    return rc;         
-}
+    NEXT_TOKEN(cmd, token);
 
-
-int
-bmp_client_process(bmp_server *server, int fd, int events)
-{
-    int rc = 0;
-    bmp_client *client, search;
-
-    search.fd = fd;
-    client = (bmp_client*)avl_lookup(server->clients, &search, NULL);
-
-    assert(client != NULL);
-
-    rc = bmp_client_read(client);
-
-    return rc;
-}
-
-
-/* 
- * Create a bmp_client entry in the server->client avl tree
- * Queue the accepted fd to the same epoll queue as the server socket
- */
-int
-bmp_client_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t slen)
-{
-    int rc;
-    struct epoll_event ev;
-    bmp_client *client;
-
-    rc = fd_nonblock(fd);
- 
-    if (rc < 0) {
+    if (!token) {
+        rc = bmp_show_bgp_router(router);
         return rc;
     }
 
-    if (fd > BMP_CLIENT_MAX - 1) {
-        bmp_log("new client dropped. fd '%d' > BMP_CLIENT_MAX", fd);
-        close(fd);
-        return -1;
+    if (strcmp(token, "messages") == 0) {
+        rc = bmp_show_bgp_router_messages(router);
+    } else if (strcmp(token, "peers") == 0) {
+        rc = bmp_show_bgp_router_peers(router);
+    } else if (strcmp(token, "peer") == 0) {
+        rc = bmp_show_bgp_router_peer_command(router, cmd);
+    } else {
+        dprintf(out, "%% Invalid keyword after 'show': %s\n", token);
     }
-
-    client = calloc(1, sizeof(bmp_client));
-
-    if (client == NULL) {
-        return -1;
-    } 
-
-    client->server = server;
-    client->fd = fd;
-    client->rdptr = client->rdbuf;
-    client->peers = avl_init(bmp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
-
-    if (client->peers == NULL) {
-        return -1;
-    }
-
-    memcpy(&client->addr, addr, slen);
-    client->port = bmp_sockaddr_string(&client->addr, client->name, 128);
-    gettimeofday(&client->time, NULL);
-
-    avl_multi_insert(server->clients, client, NULL); 
  
-    bmp_log("BMP-ADJCHANGE: %s:%d UP", client->name, client->port);
-   
-    /*
-     * Queue the client fd into the server's epoll queue
-     */
-    ev.data.fd = fd;
-    ev.events = EPOLLIN | EPOLLET;
-    rc = epoll_ctl(server->eq, EPOLL_CTL_ADD, fd, &ev);  
- 
-    if (rc < 0) {
-        bmp_log("epoll_ctl(EPOLL_CTL_ADD, %d) failed: %s", fd, strerror(errno));
-        bmp_client_close(client, BMP_CLIENT_LISTEN_ERROR);
-    }
-
     return rc;
+
 }
+
 

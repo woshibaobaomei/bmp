@@ -210,25 +210,3 @@ bmp_control_run(int argc, char *argv[])
     return 0;
 }
 
-#if 0
-int main(int argc, char *argv[])
-{
-
-    // sanity check on first argv[0]
-
-    // verify that argc is at least 2
-
-
-    // gather info about all BMP servers running
-
-
-    // parse options to see if there is a port number specified.
-
-    // pre-parse input to see if its summary command (if so then send summary command to all running bmp servers)
-
-
-
- 
-    return 0;
-}
-#endif

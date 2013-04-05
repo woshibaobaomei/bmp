@@ -1,11 +1,27 @@
-- protocol code in server (bmp_protocol.c)
+- client split into router/session
+- support for v2 / v3 messages
+- clients should be keyed on ip address only and not by port 
+- clients should be kept in a spearate 'client context' and not under server
+- thread for commands processing
+
+- implement code in bmp_process.c for more message types
 - scale testing
 - finalize on message saving scheme
-- introduce new thread to save messages
-
-Feb 19th
---------
 - design command outputs 
 - implement more commands 
-  - bmp show client X
-- think about overall analysis design
+- bmp show client X messages, peers, etc
+
+
+
+- parse bgp updates and extract nlri/attribute information
+- store nlri/attribute information on a per-afi/safi database
+- database will store bgp prefixes with "advertised path lists" 
+- database is temporal: will age out adv-paths that are older than a certain age
+
+- bmp show client x peer y
+  - show negotiated open parameters (afi/safi support, gr, route-refresh, etc)
+  - show update message stats
+    - update messages per afi/safi
+    - routes advertised/withdrawn per afi/safi
+    
+

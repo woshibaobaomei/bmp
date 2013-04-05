@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "bmp_log.h"
 #include "bmp_util.h"
 #include "bmp_timer.h"
 #include "bmp_server.h"
@@ -38,8 +39,7 @@ print_help()
     printf("  * show client <client> peer <peer> messages\n");
     printf("\n");
 }
-
-
+ 
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +50,6 @@ int main(int argc, char *argv[])
     int mode = BMP_SERVER;
     int interactive = 0;
     int port = 0;
-    int timer;
 
     while ((opt = bmp_getopt(argc, argv, &optindex)) != NULL) {
 
@@ -115,21 +114,6 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        timer = bmp_timer_init();
-
-        if (timer < 0) {
-            bmp_log("Timer init failed");
-            return -1;
-        }
-
-        rc = bmp_server_init(port, timer, interactive); 
-
-        if (rc < 0) {
-            return -1;
-        }
-
-        bmp_log("Listening on port: %d", port);
-
         if (!interactive) {
             rc = daemon(1, 1);
         }
@@ -138,6 +122,14 @@ int main(int argc, char *argv[])
             bmp_log("Server detatch from shell failed");
             return -1;
         }
+
+        rc = bmp_server_init(port, interactive); 
+
+        if (rc < 0) {
+            return -1;
+        }
+
+        bmp_log("Listening on port: %d", port);
 
         rc = bmp_server_run();
     }

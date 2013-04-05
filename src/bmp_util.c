@@ -3,15 +3,18 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/time.h>
+#include <inttypes.h>
+
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include "bmp_log.h"
 #include "bmp_util.h"
+#include "bmp_server.h"
 
 #define SPC  " "
 #define SPC2 SPC  SPC
@@ -46,41 +49,57 @@ char *space[] = {
 };
 
 
-int
-bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len)
+int 
+fd_nonblock(int fd)
 {
-    switch (af) {
-    case AF_INET:
-        inet_ntop(AF_INET, a, buf, len);
-        break;
-    case AF_INET6:
-        inet_ntop(AF_INET6, a, buf, len);
-        break;
-    default:
-        break;
+    int flags, rc;
+
+    flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) {
+        bmp_log("fcntl(%d, F_GETFL) failed: %s", fd, strerror(errno));
+        return -1;
     }
+
+    flags |= O_NONBLOCK;
+    rc = fcntl(fd, F_SETFL, flags);
+    if (rc < 0) {
+        bmp_log("fcntl(%d, F_SETFL) failed: %s", fd, strerror(errno));
+        return -1;
+    }
+
     return 0;
 }
 
 
 int 
+so_reuseaddr(int fd)
+{
+    int rc, optv;
+
+    rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optv, sizeof(optv));
+
+    if (rc < 0) {
+        bmp_log("SO_REUSEADDR(%d) failed: %s", fd, strerror(errno));
+    }
+
+    return rc;
+}
+
+
+int
 bmp_sockaddr_string(bmp_sockaddr *a, char *buf, int len)
 {
-    int port = 0;
-
     switch (a->af) {
     case AF_INET:
         inet_ntop(AF_INET, &a->ipv4.sin_addr, buf, len);
-        port = a->ipv4.sin_port;
         break;
     case AF_INET6:
         inet_ntop(AF_INET6, &a->ipv6.sin6_addr, buf, len);
-        port = a->ipv6.sin6_port;
         break;
     default:
         break;
     }
-    return port;
+    return 0;
 }
 
 
@@ -120,6 +139,23 @@ bmp_sockaddr_compare(bmp_sockaddr *a, bmp_sockaddr *b, int pcomp)
     if (pcomp) return bmp_sockaddr_port(a) - bmp_sockaddr_port(b);
 
     return cmp;
+}
+
+
+int
+bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len)
+{
+    switch (af) {
+    case AF_INET:
+        inet_ntop(AF_INET, a, buf, len);
+        break;
+    case AF_INET6:
+        inet_ntop(AF_INET6, a, buf, len);
+        break;
+    default:
+        break;
+    }
+    return 0;
 }
 
 
@@ -214,83 +250,13 @@ bmp_prompt()
 
 
 int
-bmp_log(const char *format, ...) 
-{
-    char log[1024];
-    char ts[64];
-    char *t = ts;
-    char *p = log;
-    struct timeval tv; 
-    struct tm *tm;
-    static int init = 1;
-
-    gettimeofday(&tv, NULL);
-    tm = localtime(&tv.tv_sec);
-    t += strftime(t, sizeof(ts), "%H:%M:%S.", tm);
-    snprintf(t, sizeof(ts), "%03ld", tv.tv_usec/1000);
-
-    va_list args;
-    va_start(args, format);
-
-    p += snprintf(p, sizeof(log), "[%s] ", ts);
-    p += vsnprintf(p, sizeof(log)-(p-log), format, args);
-
-    va_end(args);
-
-    printf("%s%s%s", init ? "" : "\n", log, init ? "\n" : "");
-    fflush(stdout);
-
-    init = 0;
-
-    return 0;
-}
-
-
-int 
-fd_nonblock(int fd)
-{
-    int flags, rc;
-
-    flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
-        bmp_log("fcntl(%d, F_GETFL) failed: %s", fd, strerror(errno));
-        return -1;
-    }
-
-    flags |= O_NONBLOCK;
-    rc = fcntl(fd, F_SETFL, flags);
-    if (rc < 0) {
-        bmp_log("fcntl(%d, F_SETFL) failed: %s", fd, strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-
-int 
-so_reuseaddr(int fd)
-{
-    int rc, optv;
-
-    rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optv, sizeof(optv));
-
-    if (rc < 0) {
-        bmp_log("SO_REUSEADDR(%d) failed: %s", fd, strerror(errno));
-    }
-
-    return rc;
-}
-
-
-int
 bytes_string(uint64_t size, char *buf, int len) 
 {
     int rc = 0;
     char byte = 'B';
 
     if (size < 1<<10) { // B
-        rc = snprintf(buf, len, "%llu %c", size, byte);
+        rc = snprintf(buf, len, "%"PRIu64" %c", size, byte);
     } else if (size >= 1<<10 && size < 1<<20 ) { // KB
         rc = snprintf(buf, len, "%03.2f K%c", (float)size/(float)(1<<10), byte);
     } else if (size >= 1<<20 && size < 1<<30 ) { // MB
@@ -311,7 +277,7 @@ size_string(uint64_t size, char *buf, int len)
     int rc = 0;
 
     if (size < 1000) { // B
-        rc = snprintf(buf, len, "%llu", size);
+        rc = snprintf(buf, len, "%"PRIu64, size);
     } else if (size >= 1000 && size < 1000000 ) { // KB
         rc = snprintf(buf, len, "%03.2f K", (float)size/(float)(1000));
     } else if (size >= 1000000 && size < 1000000000L ) { // MB

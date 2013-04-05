@@ -90,40 +90,26 @@ Usage
      9   1.1.1.1:12234          00:03:11     2300     10023    2.2MB
     10   2.2.2.2:23423          01:23:11        2    102323   30.2MB
 
-.
 
     $ bmp show client X
-
-.
-
     $ bmp show client X messages
-
-.
-
     $ bmp show client X peers
-
-.
-
     $ bmp show client X peer Y
-
-.
-
     $ bmp show client X peer Y messages
-
-.
-
+    
     $ bmp clear client X
-
-.
-
     $ bmp debug client X
-
-.
-
     $ bmp flush client X
-
-.
-
-
+ 
+    $ bmp show bgp ipv4 unicast summary
+    $ bmp show bgp ipv4 unicast x.x.x.x 
+    $ bmp show bgp ipv4 unciast x.x.x.x attributes
+    $ bmp show bgp ipv4 vpn 
+    $ bmp show bgp ipv4 vpn rd x:x x.x.x.x
+    $ bmp show bgp ipv4 unicast x.x.x.x since [time]
+    $ bmp show bgp ipv4 unicast from [time] to [time]
+    $ bmp show bgp attribute NEXTHOP x.x.x.x
+    
+    
 
 

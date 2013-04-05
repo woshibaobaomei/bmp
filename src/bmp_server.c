@@ -229,6 +229,12 @@ bmp_server_run()
 
     gettimeofday(&server.time, 0);
 
+    rc = bmp_command_run();
+
+    if (rc < 0) {
+        return -1;
+    }
+
     rc = bmp_process_run();
 
     if (rc < 0) {

@@ -10,7 +10,7 @@ int bmp_process_run();
 /*
  * Add a router to the processing queue
  */
-int bmp_process_signal(bgp_router *router);
-int bmp_process_consume();
+int bmp_process_message_signal(bgp_router *router);
+int bmp_process_message_consume();
 
 #endif

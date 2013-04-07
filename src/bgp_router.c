@@ -11,23 +11,10 @@
 #include "bgp_peer.h"
 #include "bgp_router.h"
 #include "bmp_command.h"
+#include "bmp_context.h"
 #include "bmp_session.h"
 
-
-avl_tree *bgp_router_context[BGP_ROUTER_CONTEXT_MAX];
-
-
-avl_tree *
-bgp_routers(int context)
-{
-    avl_tree *routers;
-
-    routers = bgp_router_context[context];
-
-    return routers;
-}
-
-
+ 
 int
 bgp_router_compare(void *a, void *b, void *c)
 {
@@ -36,26 +23,7 @@ bgp_router_compare(void *a, void *b, void *c)
 
     return bmp_sockaddr_compare(&A->addr, &B->addr, 0);
 }
-
-
-int
-bgp_router_init()
-{
-    int index;
-    avl_tree *tree;
-
-    for (index = 0; index < BGP_ROUTER_CONTEXT_MAX; index++) {
-        tree = avl_init(bgp_router_compare, NULL, 0);
-        if (tree == NULL) {
-            bmp_log("router tree init failed");
-            return -1;
-        }
-        bgp_router_context[index] = tree;
-    }
-
-    return 0;
-}
-
+ 
 
 static bgp_router *
 bgp_router_alloc(bmp_session *session, bmp_sockaddr *addr)
@@ -69,70 +37,205 @@ bgp_router_alloc(bmp_session *session, bmp_sockaddr *addr)
 
     memcpy(&router->addr, addr, sizeof(bmp_sockaddr));
     router->port = bmp_sockaddr_port(addr);
-    router->session = session;
+
+    bmp_ipaddr_string(bmp_sockaddr_ip(addr), addr->af, router->name, sizeof(router->name));
+
+    router->peers = avl_init(bgp_peer_compare, NULL, AVL_TREE_INTRUSIVE);
 
     return router;
 }
 
 
 static void
-bgp_router_list_add(bgp_router *node, bgp_router *list)
+bgp_router_list_add(bgp_router *list, bgp_router *node)
 {
+    bgp_router *next = list->next;
 
+    list->next = node;
+    node->prev = list;
+    node->next = next;
+    if (next) {
+        next->prev = node;
+    }
 }
 
 
-bgp_router *
-bgp_router_add(bmp_session *session, bmp_sockaddr *addr, int context)
+static void
+bgp_router_list_remove(bgp_router *list, bgp_router *node)
 {
-    bgp_router *router, temp, *search;
-    avl_tree *tree = bgp_router_context[context];
+    bgp_router *next = node->next;
+    bgp_router *prev = node->prev;
 
-    router = bgp_router_alloc(session, addr);
+    if (prev) prev->next = next;
+    if (next) next->prev = prev;
+}
 
-    if (router == NULL) {
-        return NULL;
+
+static void
+bgp_router_sesslog_add(bgp_router *router, char event)
+{
+    bmp_sesslog *slog = calloc(1, sizeof(bmp_sesslog));
+ 
+    if (slog == NULL) {
+        bmp_log("failed to allocate session log object");
+        return;
     }
 
-    memcpy(&temp.addr, addr, sizeof(bmp_sockaddr));
+    gettimeofday(&slog->time, NULL);
+    slog->event = event;
+
+    slog->next = router->slog;
+    router->slog = slog;
+}
+
+ 
+bgp_router *
+bgp_router_session_add(bmp_session *session)
+{
+    bgp_router *router, temp, *search;
+    avl_tree *tree = bmp_context_routers(0);
+
+    assert(session->router == NULL);
+
+    memcpy(&temp.addr, &session->addr, sizeof(bmp_sockaddr));
     
     search = avl_lookup(tree, &temp, NULL);
 
     if (search == NULL) {
+
+        router = bgp_router_alloc(session, &session->addr);
+
+        if (router == NULL) {
+            return NULL;
+        }
+
+        router->flags |= BGP_ROUTER_ACTIVE;
+
         avl_insert(tree, router, NULL);
-        return router;
+
+        goto done;
     }
- 
+
     /*
-     * Found router is not NULL. This can happen when we are trying  to insert 
-     * since we only compare routers by IP but two bgp_router objects can have 
-     * the same IP but different ports. These routers sharing the same IP are 
-     * chained together in a list 
+     * If there was a matching router in the tree, and if its currently active, 
+     * then this must be a connection from the same IP but different ports. If
+     * it's not active, then reuse the same structure but use the new port 
      */
-    bgp_router_list_add(search, router);
+    if (search->flags & BGP_ROUTER_ACTIVE) {
+
+        assert(search->port != session->port);
+
+        router = bgp_router_alloc(session, &session->addr);
+
+        if (router == NULL) {
+            return NULL;
+        }
+
+        bgp_router_list_add(search, router);
+        
+        search->flags |= BGP_ROUTER_MULTIPORT;
+        router->flags |= BGP_ROUTER_MULTIPORT;
+        
+    } else {
+        
+        router = search;        
+        router->flags |= BGP_ROUTER_ACTIVE;
+        router->port = session->port;
+
+    }
+
+done:
+
+    /*
+     * If the router is not multiport (meaning it will persist beyond a single
+     * session) then keep a log of this session up event
+     */
+    if ((router->flags & BGP_ROUTER_MULTIPORT) == 0) {
+        bgp_router_sesslog_add(router, BMP_SESSION_UP);
+    }
+
+    router->session = session;
+    session->router = router;
 
     return router;
 }
 
 
+void
+bgp_router_session_remove(bmp_session *session)
+{
+    bgp_router *router = session->router;
+    bgp_router *search, *next, temp;
+    avl_tree *tree = bmp_context_routers(0);
+
+    assert(session->router != NULL);
+
+    router->flags &= ~BGP_ROUTER_ACTIVE;
+    session->router = NULL;
+    router->session = NULL;
+
+    if (router->flags & BGP_ROUTER_MULTIPORT) {
+
+        memcpy(&temp.addr, &router->addr, sizeof(bmp_sockaddr));
+    
+        search = avl_lookup(tree, &temp, NULL);
+    
+        assert(search != NULL);
+    
+        next = search->next;
+    
+        if (search != router) {
+             bgp_router_list_remove(search, router);
+        }
+    
+        /*
+         * If the router is part of the tree, we have to remove the router from 
+         * the tree and insert the router's next item on the list into the tree 
+         */
+        if (search == router) {
+            avl_remove(tree, router, NULL);
+            if (next != NULL) {
+                avl_insert(tree, next, NULL);    
+            }
+        } 
+    } else {
+        bgp_router_sesslog_add(router, BMP_SESSION_DN);
+    }
+}
+
+
 // router search routines -----------------------------------------------------
 
+/*
+ * Structure used during a search of the router tree
+ */
+typedef struct bgp_router_search_index_ {
+    int id;
+    int port;
+    int index;
+    bgp_router *router;
+    struct bgp_router_search_index_ *next;
+} bgp_router_search_index;
+ 
 
 static bgp_router *
 bgp_router_list_find_walker(bgp_router *router, void *ctx)
 {
     bgp_router_search_index *idx = (bgp_router_search_index *)ctx;
     
-    if (router == NULL) return NULL;
-    
-    ++idx->index;
-    
-    // search by ID
-    if (idx->id > 0 && idx->index == idx->id) return router;
-    
-    // search by port
-    if (idx->port > 0) if (router->port == idx->port) return router;
+    while (router != NULL) {
 
+        ++idx->index;
+        
+        // search by ID
+        if (idx->id > 0 && idx->index == idx->id) return router;
+
+        // search by port
+        if (idx->port > 0) if (router->port == idx->port) return router;
+
+        router = router->next;
+    }
+ 
     return NULL;
 }
 
@@ -149,27 +252,22 @@ bgp_router_list_find_add_walker(bgp_router *router, void *ctx)
     if (router == NULL) return;
     
     
-    
-    
 
 }
 
 
 static int
-bgp_router_tree_find_walker(void *node, void *ctx)
+bgp_router_id_find_walker(void *node, void *ctx)
 {
     bgp_router *search, *router = (bgp_router *)node;
     bgp_router_search_index *idx = (bgp_router_search_index *)idx;
     
-    while (router != NULL) {
-        search = bgp_router_list_find_walker(router, ctx);
-        if (search != NULL) {
-            idx->router = search;
-            return AVL_ERROR; // not really an error, just stop the walk
-        }
-        router = router->next;
-        search = NULL;
+    search = bgp_router_list_find_walker(router, ctx);
+
+    if (search != NULL) {
+        return AVL_ERROR; // not really an error - just stop the walk
     }
+
     return AVL_SUCCESS;
 }
 
@@ -193,7 +291,7 @@ bgp_find_router_token(avl_tree *routers,
 
     if (id) { // return a client based on id
         idx->id = id; 
-        avl_walk(routers, bgp_router_tree_find_walker, idx, AVL_WALK_INORDER);
+        avl_walk(routers, bgp_router_id_find_walker, idx, AVL_WALK_INORDER);
         router = idx->router;
         idx->index = 0;
         goto done;
@@ -213,7 +311,7 @@ bgp_find_router_token(avl_tree *routers,
     router = avl_lookup(routers, router, idx);
     // TODO: finish
 
- 
+
 done:
 
     return router;
@@ -237,10 +335,17 @@ bmp_show_bgp_routers_list_walker(bgp_router *router, void *ctx)
     bmp_session *session = router->session;
 
     snprintf(as, sizeof(as), "%s:%d", router->name, router->port);
-    uptime_string(now.tv_sec - session->time.tv_sec, up, sizeof(up));
     snprintf(pe, sizeof(pe), "%d", avl_size(router->peers));
     size_string(router->msgs, ms, sizeof(ms));
-    bytes_string(session->bytes, bs, sizeof(bs));
+    
+
+    if (router->session) {
+        bytes_string(session->bytes, bs, sizeof(bs));
+        uptime_string(now.tv_sec - session->time.tv_sec, up, sizeof(up));
+    } else {
+        snprintf(bs, sizeof(bs), "n/a");
+        snprintf(up, sizeof(up), "down");
+    }
 
     if (id == 1) 
     dprintf(out, " ID    Address:Port               Uptime          Peers     Msgs       Data\n");
@@ -276,7 +381,7 @@ int
 bmp_show_bgp_routers()
 {
     int id = 0;
-    avl_tree *routers = bgp_routers(0);
+    avl_tree *routers = bmp_context_routers(0);
 
     if (avl_size(routers) == 0) {
         dprintf(out, "%% No routers\n");
@@ -346,7 +451,7 @@ bmp_show_bgp_router_command(char *cmd)
     int rc = 0;
     bgp_router *router = NULL;
     bgp_router_search_index idx, *curr, *next;
-    avl_tree *routers = bgp_routers(0);
+    avl_tree *routers = bmp_context_routers(0);
     
     memset(&idx, 0, sizeof(idx));
 

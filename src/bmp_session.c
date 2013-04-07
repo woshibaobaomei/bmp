@@ -26,27 +26,7 @@ bmp_session_compare(void *a, void *b, void *c)
 static void
 bmp_session_cleanup(bmp_session *session)
 {
-    //free(client);
-}
-
-
-int
-bmp_session_close(bmp_session *session, int reason)
-{
-    assert(session != NULL);
-    assert(session->fd != 0);
-
-    avl_remove(session->server->sessions, session, NULL);
-
-    bmp_log("BMP-ADJCHANGE: Router %s:%d DOWN (%s)", session->router->name, session->port,
-             BMP_SESSION_CLOSE_REASON(reason));
-
-
-    close(session->fd); // this will also remove the fd from the epoll queue
-
-    bmp_session_cleanup(session);
-
-    return 0;
+    free(session);
 }
 
 
@@ -63,6 +43,34 @@ bmp_protocol_error(bmp_session *session, int error)
 }
 
 
+int
+bmp_session_close(bmp_session *session, int reason)
+{
+    char port[16];
+    int multiport;
+    bgp_router *router = session->router;
+
+    assert(router != NULL);
+    assert(session != NULL);
+    assert(session->fd != 0);
+
+    avl_remove(session->server->sessions, session, NULL);
+
+    close(session->fd); // this will also remove the fd from the epoll queue
+
+    snprintf(port, 16, ":%d", session->port);
+    multiport = (router->flags & BGP_ROUTER_MULTIPORT);
+
+    bmp_log("BMP-ADJCHANGE: Router %s%s DOWN (%s)", session->router->name, multiport ? port : "", BMP_SESSION_CLOSE_REASON(reason));
+   
+    bgp_router_session_remove(session);
+
+    bmp_session_cleanup(session);
+
+    return 0;
+}
+
+
 /* 
  * Create a bmp_session entry in the server->session avl tree
  * Queue the accepted fd to the same epoll queue as the server socket
@@ -70,8 +78,8 @@ bmp_protocol_error(bmp_session *session, int error)
 int
 bmp_session_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t slen)
 {
-    int rc;
-    struct epoll_event ev;
+    int rc, multiport;
+    char port[16];
     bmp_session *session;
     bgp_router *router;
 
@@ -111,20 +119,27 @@ bmp_session_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t 
     avl_insert(server->sessions, session, NULL); 
 
     /*
-     * Queue the client fd into the server's epoll queue
+     * Queue the session fd into the server's epoll queue
      */
-    ev.data.fd = fd;
-    ev.events = EPOLLIN | EPOLLET;
-    rc = epoll_ctl(server->eq, EPOLL_CTL_ADD, fd, &ev);  
+    MONITOR_FD(server->eq, fd, rc);
  
     if (rc < 0) {
-        bmp_log("epoll_ctl(EPOLL_CTL_ADD, %d) failed: %s", fd, strerror(errno));
-        bmp_session_close(session, BMP_SESSION_LISTEN_ERROR);
+        bmp_log("epoll add %d failed: %s", fd, strerror(errno));
+        close(fd);
+        return -1;
     }
 
-    router = bgp_router_add(session, &session->addr, 0);
+    router = bgp_router_session_add(session);
 
-    bmp_log("BMP-ADJCHANGE: Router %s:%d UP", router->name, session->port);
+    if (router == NULL) {
+        return -1;
+    }
+
+    snprintf(port, 16, ":%d", session->port);
+    multiport = (router->flags & BGP_ROUTER_MULTIPORT);
+
+    bmp_log("BMP-ADJCHANGE: Router %s%s UP", session->router->name, multiport ? port : "");
+   
 
     return rc;
 }
@@ -199,7 +214,7 @@ bmp_session_read(bmp_session *session)
      * session COULD be in inactive state (session torn down, etc)
      */
     if (session->router->msgs - msgs) {
-        bmp_process_signal(session->router);
+        bmp_process_message_signal(session->router);
     }
 
     if (rc == 0) {

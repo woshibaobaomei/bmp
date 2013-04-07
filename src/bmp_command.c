@@ -315,10 +315,7 @@ bmp_command_init(int interactive)
         return -1;
     }
 
-    ev.data.fd = fd;
-    ev.events = EPOLLIN | EPOLLET;
-   
-    rc = epoll_ctl(bmp_command_eq, EPOLL_CTL_ADD, fd, &ev);
+    MONITOR_FD(bmp_command_eq, fd, rc);
 
     if (rc < 0) {
         bmp_log("local command socket listen error: %s", fd, strerror(errno));
@@ -329,10 +326,8 @@ bmp_command_init(int interactive)
      * If interactive, also monitor STDIN
      */
     if (interactive) {
-        ev.data.fd = STDIN_FILENO;
-        ev.events = EPOLLIN | EPOLLET;
-       
-        rc = epoll_ctl(bmp_command_eq, EPOLL_CTL_ADD, fd, &ev);
+
+        MONITOR_FD(bmp_command_eq, STDIN_FILENO, rc);
     
         if (rc < 0) {
             bmp_log("local command socket listen error: %s", fd, strerror(errno));

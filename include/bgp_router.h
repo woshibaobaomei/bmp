@@ -58,39 +58,38 @@ struct bgp_router_ {
     uint64_t      mstat[BMP_MESSAGE_TYPE_MAX]; 
     msg_head      mhead;
     avl_tree     *peers;
+    bmp_lock_t    peers_lock;
     bgp_router   *prev;
     bgp_router   *next;
     bmp_session  *session;
+    bmp_sesslog  *slog;
 };
 
 
 /*
- * Structure used during a search of the router tree
+ * BGP router flags: 
+ *  
+ * ACTIVE - the TCP session with the router is currently up 
+ *  
+ * MULTIPORT - multiple sessions from a single IP but different ports. We can't 
+ * persist the data for these types of sessions (once session goes down, it has 
+ * to be cleaned up. Used mostly for testing
+ *  
  */
-typedef struct bgp_router_search_index_ {
-    int id;
-    int port;
-    int index;
-    bgp_router *router;
-    struct bgp_router_search_index *next;
-} bgp_router_search_index;
-
- 
-#define BGP_ROUTER_CONTEXT_DEFAULT 0
-#define BGP_ROUTER_CONTEXT_TEMP    1
-#define BGP_ROUTER_CONTEXT_MAX     2
+#define BGP_ROUTER_ACTIVE    0x00000001
+#define BGP_ROUTER_MULTIPORT 0x00000002
 
 
-int
-bgp_router_init();
-
-
-avl_tree *
-bgp_routers(int context);
+int 
+bgp_router_compare(void *a, void *b, void *c);
 
 
 bgp_router *
-bgp_router_add(bmp_session *session, bmp_sockaddr *addr, int context);
+bgp_router_session_add(bmp_session *session);
+
+
+void
+bgp_router_session_remove(bmp_session *session);
 
 
 int

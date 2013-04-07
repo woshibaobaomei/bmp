@@ -3,19 +3,17 @@
 
 #include "avl.h"
 #include "bgp_router.h"
+#include "bmp_session.h"
 #include "bmp_protocol.h"
 
 #define BMP_PEER_HDR_COMP_LEN 42
 
 typedef struct bgp_peer_ {
-    avl_node  avl;
-    char      name[256];
-
-    bmp_peer_hdr      *hdr;
-    bmp_peer_up_msg   *up;
-    bmp_peer_down_msg *down;
-
-    bgp_router *router;
+    avl_node      avl;
+    char          name[256];
+    bmp_peer_hdr *hdr;
+    bgp_router   *router;
+    
 } bgp_peer;
  
 

@@ -49,7 +49,7 @@ typedef struct bgp_route_ {
 } bgp_route;
 
 
-int bmp_table_init();
+int bmp_table_init(int af);
 
 
 #endif

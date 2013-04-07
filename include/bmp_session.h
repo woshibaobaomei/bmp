@@ -31,6 +31,7 @@
  */
 typedef struct bgp_router_  bgp_router;
 typedef struct bmp_session_ bmp_session;
+typedef struct bmp_sesslog_ bmp_sesslog;
 
 struct bmp_session_ {
     avl_node       avl;
@@ -44,6 +45,20 @@ struct bmp_session_ {
     bgp_router    *router;
     bmp_server    *server;
 };
+
+
+/*
+ * bmp_sesslog - small object representing when a session has come up/down
+ */ 
+#define BMP_SESSION_UP 0
+#define BMP_SESSION_DN 1
+
+struct bmp_sesslog_ {
+    bmp_sesslog    *next;
+    struct timeval  time;
+    char            event;
+};
+
 
 int bmp_session_create(bmp_server *server, int fd, struct sockaddr *addr, socklen_t slen);
 int bmp_session_process(bmp_server* server, int fd, int events);

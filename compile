@@ -21,6 +21,7 @@ gcc -g -Wall -o bmp  \
  src/bmp_recv.c      \
  src/bmp_process.c   \
  src/bmp_command.c   \
+ src/bmp_context.c   \
  src/bmp_control.c   \
  src/bmp_show.c      \
  src/bmp_timer.c     \

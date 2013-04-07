@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 
@@ -23,18 +24,20 @@ do {                             \
     while (!isspace(*tmp))tmp++; \
     *tmp = 0;                    \
     cmd = tmp+1;                 \
-} while (0);
+} while (0)
 
 
-#define bmp_sockaddr_ip(a)     \
-    (a->af == AF_INET ?        \
-    (void*)&a->ipv4.sin_addr : \
-    (void*)&a->ipv6.sin6_addr)
+/*
+ * Add an fd to be monitored in an epoll queue
+ */
+#define MONITOR_FD(q,f,rc) do {  \
+    struct epoll_event _ev;      \
+    _ev.data.fd = (f);           \
+    _ev.events = EPOLLIN|EPOLLET;\
+    (rc) = epoll_ctl((q),        \
+    EPOLL_CTL_ADD, (f), &_ev);   \
+} while (0)
 
-#define bmp_sockaddr_port(a)   \
-        ((a)->af == AF_INET ?  \
-        (a)->ipv4.sin_port :   \
-        (a)->ipv6.sin6_port)
 
 /*
  * bmp_sockaddr can be casted with struct sockaddr
@@ -46,6 +49,20 @@ typedef union bmp_sockaddr_ {
         struct sockaddr_in6 ipv6;
     };
 } bmp_sockaddr;
+
+
+#define bmp_sockaddr_ip(a)     \
+    (a->af == AF_INET ?        \
+    (void*)&a->ipv4.sin_addr : \
+    (void*)&a->ipv6.sin6_addr)
+
+#define bmp_sockaddr_port(a)   \
+    ((a)->af == AF_INET ?      \
+    ntohs((a)->ipv4.sin_port) :\
+    ntohs((a)->ipv6.sin6_port))
+
+
+#define bmp_lock_t pthread_mutex_t
 
 
 int fd_nonblock(int fd);
@@ -60,7 +77,6 @@ int bmp_ipaddr_string(uint8_t *a, int af, char *buf, int len);
 int bmp_ipaddr_port_id_parse(char *token, int *ip, int *port, int *id);
 
 
-int bmp_prompt();
 int size_string(uint64_t size, char *buf, int len);
 int bytes_string(uint64_t size, char *buf, int len);
 int uptime_string(int s, char *buf, int len);
@@ -69,5 +85,6 @@ int cmdexec(char *cmd, char *buf, int len);
 extern char *bmp_optarg;
 char *bmp_getopt(int argc, char *argv[], int *index);
 void bmp_ungetopt(int *index);
+int bmp_prompt();
 
 #endif

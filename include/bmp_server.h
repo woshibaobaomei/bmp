@@ -16,12 +16,12 @@
 #define epv struct epoll_event
 typedef struct bmp_server_ bmp_server;
 struct bmp_server_ {
-    int  fd;
     int  eq;
     epv *ev;
     int  pid;
     int  port;
     int  timer;
+    int  listen;
  
     uint32_t  flags;
     uint64_t  bytes;

@@ -18,14 +18,21 @@
  * of the router list while holding the process mutex. Once the copy is done, 
  * it releases the mutex and starts processing the clients in the copied list 
  */
-static int             bmp_process_eq;
-static epv            *bmp_process_ev;
-static int             bmp_process_timer;
-static pthread_t       bmp_process_thread;
-static pthread_mutex_t bmp_process_mutex;
-static bgp_router     *bmp_router_queue[BMP_SESSION_MAX];  // shared queue
-static bgp_router     *bmp_process_queue[BMP_SESSION_MAX]; // copied queue
-static int             bmp_router_qsize = 0;
+static int          bmp_process_eq;
+static epv         *bmp_process_ev;
+static int          bmp_process_timer;
+static pthread_t    bmp_process_thread;
+static bmp_lock_t   bmp_process_lock;
+static bgp_router  *bmp_router_queue[BMP_SESSION_MAX];  // shared queue
+static bgp_router  *bmp_process_queue[BMP_SESSION_MAX]; // copied queue
+static int          bmp_router_qsize = 0;
+
+
+/*
+ * ticks - number of times this thread has been woken up by the 2 second timer
+ */
+static uint64_t ticks = 0;
+
 
 /*
  * Max size of the process event queue
@@ -50,6 +57,45 @@ bmp_process_peer_hdr(bgp_router *router, char *data, int len)
     return peer;
 }
 
+
+static int
+bmp_process_router_message(bgp_router *router, char *data)
+{
+    // TODO: given a pointer to a singe BMP message (data pointer), process 
+    // that message
+
+    return 0;
+}
+
+
+static int 
+bmp_process_router_messages(bgp_router *router)
+{
+    // TODO: go thru a router's message list (stored in mhead) and process
+    // them one by one
+
+    bmp_process_router_message(router, NULL);
+
+    return 0;
+}
+
+
+static void
+bmp_process_routers_messages()
+{
+    int index, routers = 0;
+    bgp_router *router;
+
+    routers = bmp_process_message_consume();
+
+    for (index = 0; index < routers; index++) {
+        router = bmp_process_queue[index];
+        if (router == NULL) continue;
+        bmp_process_router_messages(router);
+    }
+}
+
+
 /*
  * Main routine that walks over the clients with pending BMP messages and 
  * processes new messages. It's up to the implementation here to define how to 
@@ -58,16 +104,17 @@ bmp_process_peer_hdr(bgp_router *router, char *data, int len)
 static int 
 bmp_process()
 {
-    int rc = 0, index, routers = 0;
-    bgp_router *router;
- 
-    routers = bmp_process_consume();
+    int rc = 0;
+    /*
+     * Always check to see if there are any routers that need processing
+     */
+    bmp_process_routers_messages();
 
-    for (index = 0; index < routers; index++) {
-        router = bmp_process_queue[index];
-        if (router == NULL) continue;
-   
-    }
+
+    /*
+     * Do other things here based on time
+     */
+
 
     return rc;
 }
@@ -77,17 +124,17 @@ bmp_process()
 
 
 int 
-bmp_process_signal(bgp_router *router)
+bmp_process_message_signal(bgp_router *router)
 {
-    pthread_mutex_lock(&bmp_process_mutex);
+    pthread_mutex_lock(&bmp_process_lock);
     bmp_router_queue[bmp_router_qsize++] = router;
-    pthread_mutex_unlock(&bmp_process_mutex);
+    pthread_mutex_unlock(&bmp_process_lock);
     return 0;
 }
 
 
 int
-bmp_process_consume()
+bmp_process_message_consume()
 {
     int rc = 0;
 
@@ -96,11 +143,11 @@ bmp_process_consume()
     /*
      * Copy out the clients list into a separate memory space and work on that
      */
-    pthread_mutex_lock(&bmp_process_mutex);
+    pthread_mutex_lock(&bmp_process_lock);
     rc = bmp_router_qsize;
     memcpy(bmp_process_queue, bmp_router_queue, rc * sizeof(bgp_router*));
     bmp_router_qsize = 0;
-    pthread_mutex_unlock(&bmp_process_mutex);
+    pthread_mutex_unlock(&bmp_process_lock);
 
     return rc;
 }
@@ -128,7 +175,10 @@ bmp_process_loop(void *arg)
             ev = bmp_process_ev[i].events; 
             fd = bmp_process_ev[i].data.fd;
             if ((ev & EPOLLERR) || (ev & EPOLLHUP)) continue;
-            if (fd == bmp_process_timer) bmp_process();
+            if (fd == bmp_process_timer) {
+                ticks++;
+                bmp_process();
+            }
         }
     }
 
@@ -180,10 +230,10 @@ bmp_process_init()
         return -1;
     }
 
-    ev.data.fd = bmp_process_timer;
-    ev.events = EPOLLIN | EPOLLET;
-
-    rc = epoll_ctl(bmp_process_eq, EPOLL_CTL_ADD, bmp_process_timer, &ev);
+    /*
+     * Register this fd to watch for events
+     */
+    MONITOR_FD(bmp_process_eq, bmp_process_timer, rc);
  
     if (rc < 0) {
         bmp_log("process timer listen error: %s", strerror(errno));

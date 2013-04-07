@@ -1,8 +1,3 @@
-- client split into router/session
-- support for v2 / v3 messages
-- clients should be keyed on ip address only and not by port 
-- clients should be kept in a spearate 'client context' and not under server
-- thread for commands processing
 
 - implement code in bmp_process.c for more message types
 - scale testing
@@ -24,4 +19,8 @@
     - update messages per afi/safi
     - routes advertised/withdrawn per afi/safi
     
+- bmp show log { from xxx | from xxx to yyy }
+  - how do we show logfiles for a server that has gone away?
+- bmp configure
+- bmp shutdown
 

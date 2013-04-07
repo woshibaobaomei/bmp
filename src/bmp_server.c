@@ -22,6 +22,7 @@
 #include "bmp_control.h"
 #include "bmp_command.h"
 #include "bmp_session.h"
+#include "bmp_context.h"
 #include "bmp_process.h"
 
 bmp_server server;
@@ -40,7 +41,7 @@ bmp_accept_sessions(bmp_server *server, int events)
 
         slen = sizeof(caddr);
 
-        fd = accept(server->fd, &caddr, &slen); 
+        fd = accept(server->listen, &caddr, &slen); 
 
         if (fd < 0) {
 
@@ -100,34 +101,34 @@ bmp_server_init(int port, int interactive)
     saddr.sin_addr.s_addr = INADDR_ANY;
     saddr.sin_port = htons(server.port);
 
-    server.fd = socket(AF_INET, SOCK_STREAM, 0);
+    server.listen = socket(AF_INET, SOCK_STREAM, 0);
     
-    if (server.fd < 0) {
+    if (server.listen < 0) {
         bmp_log("socket() failed: %s", strerror(errno));
         exit(1);
     }
 
-    rc = so_reuseaddr(server.fd);
+    rc = so_reuseaddr(server.listen);
 
     if (rc < 0) {
         return rc;
     }
 
-    rc = bind(server.fd, (struct sockaddr *) &saddr, sizeof(saddr));
+    rc = bind(server.listen, (struct sockaddr *) &saddr, sizeof(saddr));
 
     if (rc < 0) {
         bmp_log("bind() failed: %s", strerror(errno));
         return rc;
     }
  
-    rc = listen(server.fd, BMP_SESSION_MAX);
+    rc = listen(server.listen, BMP_SESSION_MAX);
 
     if (rc < 0) {
         bmp_log("listen() failed: %s", strerror(errno));
         return rc;
     }
     
-    rc = fd_nonblock(server.fd);
+    rc = fd_nonblock(server.listen);
 
     if (rc < 0) {
         return rc;
@@ -144,10 +145,7 @@ bmp_server_init(int port, int interactive)
         return -1;
     }
 
-    ev.data.fd = server.fd;
-    ev.events = EPOLLIN | EPOLLET;
-   
-    rc = epoll_ctl(server.eq, EPOLL_CTL_ADD, server.fd, &ev);
+    MONITOR_FD(server.eq, server.listen, rc);
 
     if (rc < 0) {
         bmp_log("epoll_ctl(server->fd) failed: %s", strerror(errno));
@@ -166,10 +164,8 @@ bmp_server_init(int port, int interactive)
     }
 
     server.timer = timer;
-    ev.data.fd = server.timer;
-    ev.events = EPOLLIN | EPOLLET;
 
-    rc = epoll_ctl(server.eq, EPOLL_CTL_ADD, server.timer, &ev);
+    MONITOR_FD(server.eq, timer, rc);
 
     if (rc < 0) {
         bmp_log("server timer listen error: %s", timer, strerror(errno));
@@ -189,7 +185,7 @@ bmp_server_init(int port, int interactive)
     /* 
      * Initialize the session AVL tree
      */
-    server.sessions = avl_init(bmp_session_compare, NULL, 0);
+    server.sessions = avl_init(bmp_session_compare, NULL, AVL_TREE_INTRUSIVE);
 
     /* 
      * Start the command processing task
@@ -210,9 +206,9 @@ bmp_server_init(int port, int interactive)
     }
 
     /*
-     * Initialize the BMP table module
+     * Initialize the realtime "online" BMP context
      */
-    rc = bmp_table_init();
+    rc = bmp_context_init(0);
 
     if (rc < 0) {
         return -1;
@@ -268,7 +264,7 @@ bmp_server_run()
                 continue;
             } 
 
-            if (fd == server.fd) { // server's listen socket - accept sessions
+            if (fd == server.listen) { // listen socket - accept sessions
 
                 bmp_accept_sessions(&server, ev);
 
@@ -284,7 +280,7 @@ bmp_server_run()
         }
     }
 
-    close(server.fd);
+    close(server.listen);
     close(server.eq);
     free(server.ev);
 
@@ -292,12 +288,32 @@ bmp_server_run()
 }   
 
 
+
 int
 bmp_show_summary()
 {
-    dprintf(out, "%% TODO\n");
+    char bs[32];
+    char ms[32];
+    char up[32];
+
+    uptime_string(now.tv_sec - server.time.tv_sec, up, sizeof(up));
+
+    dprintf(out, "\n");
+    dprintf(out, "BMP Server (port %d)\n", server.port);
+    dprintf(out, "  BMP Server pid     : %d\n", server.pid);
+    dprintf(out, "  BMP Server uptime  : %s\n", up);
+    dprintf(out, "  Active BGP routers : %d\n", avl_size(server.sessions));
+    dprintf(out, "  Active BGP peers   : %d\n", 0);
+    size_string(server.msgs, ms, sizeof(ms));
+    dprintf(out, "  Total msgs rcv'd   : %s\n", ms);
+    bytes_string(server.bytes, bs, sizeof(bs));
+    dprintf(out, "  Total data rcv'd   : %s\n", bs);
+    bytes_string(server.memory, bs, sizeof(bs));
+    dprintf(out, "  Total memory usage : %s\n", bs);       
+
+    dprintf(out, "\n");
+
     return 0;
 }
-
 
 
